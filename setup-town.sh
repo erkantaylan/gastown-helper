@@ -21,6 +21,31 @@ INSTALL_CLAUDE="n"
 INSTALL_GH="n"
 COPY_SSH="n"
 
+# ─── TTY for interactive prompts (supports curl | bash) ───────────────────────
+# When piped via curl|bash, stdin is the script itself. Read from /dev/tty instead.
+if [[ -t 0 ]]; then
+    TTY_IN=/dev/stdin
+else
+    TTY_IN=/dev/tty
+fi
+
+prompt() {
+    # Usage: prompt "prompt text" VARNAME
+    # Like read -rp but reads from TTY even when piped
+    local text="$1" var="$2"
+    echo -ne "$text" >&2
+    IFS= read -r "$var" < "$TTY_IN"
+}
+
+prompt_secret() {
+    # Usage: prompt_secret "prompt text" VARNAME
+    # Like read -rsp but reads from TTY even when piped
+    local text="$1" var="$2"
+    echo -ne "$text" >&2
+    IFS= read -rs "$var" < "$TTY_IN"
+    echo "" >&2
+}
+
 # ─── Helpers ──────────────────────────────────────────────────────────────────
 
 info()    { echo -e "${GREEN}[✓]${NC} $*"; }
@@ -61,22 +86,21 @@ gather_inputs() {
     echo ""
 
     # Username
-    read -rp "$(echo -e "${YELLOW}Username${NC} for the new OS user: ")" GT_USER
+    prompt "$(echo -e "${YELLOW}Username${NC} for the new OS user: ")" GT_USER
     if [[ -z "$GT_USER" ]]; then
         err "Username cannot be empty."
         exit 1
     fi
 
     # Password
-    read -rsp "$(echo -e "${YELLOW}Password${NC} for ${GT_USER}: ")" GT_PASS
-    echo ""
+    prompt_secret "$(echo -e "${YELLOW}Password${NC} for ${GT_USER}: ")" GT_PASS
     if [[ -z "$GT_PASS" ]]; then
         err "Password cannot be empty."
         exit 1
     fi
 
     # Town name
-    read -rp "$(echo -e "${YELLOW}Town name${NC} [default: ${GT_USER}]: ")" TOWN_NAME
+    prompt "$(echo -e "${YELLOW}Town name${NC} [default: ${GT_USER}]: ")" TOWN_NAME
     TOWN_NAME="${TOWN_NAME:-$GT_USER}"
 
     # Install method
@@ -84,23 +108,24 @@ gather_inputs() {
     echo -e "${YELLOW}Install method:${NC}"
     echo "  1) Latest GitHub release (default)"
     echo "  2) Build from source"
-    read -rp "Choose [1/2]: " method_choice
+    local method_choice
+    prompt "Choose [1/2]: " method_choice
     case "${method_choice:-1}" in
         2) INSTALL_METHOD="source" ;;
         *) INSTALL_METHOD="release" ;;
     esac
 
     # Claude Code
-    read -rp "$(echo -e "Install ${YELLOW}Claude Code${NC}? [y/N]: ")" INSTALL_CLAUDE
+    prompt "$(echo -e "Install ${YELLOW}Claude Code${NC}? [y/N]: ")" INSTALL_CLAUDE
     INSTALL_CLAUDE="${INSTALL_CLAUDE,,}"  # lowercase
 
     # GitHub CLI
-    read -rp "$(echo -e "Install ${YELLOW}GitHub CLI (gh)${NC}? [y/N]: ")" INSTALL_GH
+    prompt "$(echo -e "Install ${YELLOW}GitHub CLI (gh)${NC}? [y/N]: ")" INSTALL_GH
     INSTALL_GH="${INSTALL_GH,,}"
 
     # SSH key migration
     if [[ -n "${SUDO_USER:-}" ]] && [[ -d "/home/${SUDO_USER}/.ssh" ]]; then
-        read -rp "$(echo -e "Copy ${YELLOW}SSH keys${NC} from ${SUDO_USER} to ${GT_USER}? [y/N]: ")" COPY_SSH
+        prompt "$(echo -e "Copy ${YELLOW}SSH keys${NC} from ${SUDO_USER} to ${GT_USER}? [y/N]: ")" COPY_SSH
         COPY_SSH="${COPY_SSH,,}"
     fi
 
@@ -114,7 +139,8 @@ gather_inputs() {
     echo "  GitHub CLI:     ${INSTALL_GH}"
     echo "  SSH migration:  ${COPY_SSH}"
     echo ""
-    read -rp "Proceed? [Y/n]: " confirm
+    local confirm
+    prompt "Proceed? [Y/n]: " confirm
     if [[ "${confirm,,}" == "n" ]]; then
         echo "Aborted."
         exit 0
