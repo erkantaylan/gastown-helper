@@ -2,6 +2,12 @@
 
 Setup script for bootstrapping a [Gas Town](https://github.com/steveyegge/gastown) instance on a fresh Ubuntu/Debian machine.
 
+## One-Liner
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/setup-town.sh | sudo bash
+```
+
 ## Quick Start
 
 ```bash
