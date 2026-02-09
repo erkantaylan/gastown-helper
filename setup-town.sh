@@ -162,6 +162,18 @@ create_user() {
     echo "${GT_USER}:${GT_PASS}" | run chpasswd
     info "Password set."
 
+    # Hide from GDM login screen (service account, not a human user)
+    local acct_file="/var/lib/AccountsService/users/${GT_USER}"
+    if [[ ! -f "$acct_file" ]] || ! grep -q "SystemAccount=true" "$acct_file" 2>/dev/null; then
+        if $DRY_RUN; then
+            echo -e "${YELLOW}[dry-run]${NC} Write SystemAccount=true to ${acct_file}"
+        else
+            mkdir -p /var/lib/AccountsService/users
+            printf '[User]\nSystemAccount=true\n' > "$acct_file"
+        fi
+        info "Hidden ${GT_USER} from login screen."
+    fi
+
     if getent group docker &>/dev/null; then
         run usermod -aG docker "${GT_USER}"
         info "Added ${GT_USER} to docker group."
