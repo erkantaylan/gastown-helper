@@ -20,6 +20,8 @@ INSTALL_METHOD="release"
 INSTALL_CLAUDE="n"
 INSTALL_GH="n"
 COPY_SSH="n"
+GIT_USER_NAME=""
+GIT_USER_EMAIL=""
 
 # ─── TTY for interactive prompts (supports curl | bash) ───────────────────────
 # When piped via curl|bash, stdin is the script itself. Read from /dev/tty instead.
@@ -123,6 +125,11 @@ gather_inputs() {
     prompt "$(echo -e "Install ${YELLOW}GitHub CLI (gh)${NC}? [y/N]: ")" INSTALL_GH
     INSTALL_GH="${INSTALL_GH,,}"
 
+    # Git global config
+    echo ""
+    prompt "$(echo -e "${YELLOW}Git user.name${NC} for ${GT_USER}: ")" GIT_USER_NAME
+    prompt "$(echo -e "${YELLOW}Git user.email${NC} for ${GT_USER}: ")" GIT_USER_EMAIL
+
     # SSH key migration
     if [[ -n "${SUDO_USER:-}" ]] && [[ -d "/home/${SUDO_USER}/.ssh" ]]; then
         prompt "$(echo -e "Copy ${YELLOW}SSH keys${NC} from ${SUDO_USER} to ${GT_USER}? [y/N]: ")" COPY_SSH
@@ -135,6 +142,8 @@ gather_inputs() {
     echo "  User:           ${GT_USER}"
     echo "  Town name:      ${TOWN_NAME}"
     echo "  Install method: ${INSTALL_METHOD}"
+    echo "  Git user.name:  ${GIT_USER_NAME:-<not set>}"
+    echo "  Git user.email: ${GIT_USER_EMAIL:-<not set>}"
     echo "  Claude Code:    ${INSTALL_CLAUDE}"
     echo "  GitHub CLI:     ${INSTALL_GH}"
     echo "  SSH migration:  ${COPY_SSH}"
@@ -489,6 +498,21 @@ migrate_ssh_keys() {
     info "SSH keys migrated and permissions set."
 }
 
+# ─── Git Global Config ────────────────────────────────────────────────────────
+
+setup_git_config() {
+    step "Configuring Git global settings"
+
+    if [[ -z "$GIT_USER_NAME" || -z "$GIT_USER_EMAIL" ]]; then
+        warn "Git user.name or user.email not provided, skipping git config."
+        return
+    fi
+
+    run_as_user "git config --global user.name '${GIT_USER_NAME}'"
+    run_as_user "git config --global user.email '${GIT_USER_EMAIL}'"
+    info "Git global config set: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
+}
+
 # ─── Initialize Town ──────────────────────────────────────────────────────────
 
 init_town() {
@@ -556,6 +580,7 @@ main() {
     esac
 
     setup_path
+    setup_git_config
     install_claude_code
     install_github_cli
     migrate_ssh_keys
