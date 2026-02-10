@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 
@@ -56,21 +55,12 @@ func loadConfig() Config {
 		stateFile = filepath.Join(home, ".gt-bot-state.json")
 	}
 
-	gtBin := os.Getenv("GT_BIN")
-	if gtBin == "" {
-		gtBin = "gt"
-	}
-	bdBin := os.Getenv("BD_BIN")
-	if bdBin == "" {
-		bdBin = "bd"
-	}
-
 	return Config{
 		BotToken:     os.Getenv("TELEGRAM_BOT_TOKEN"),
 		ChatIDs:      chatIDs,
 		TownRoot:     envOr("GT_TOWN_ROOT", "/home/gastown/antik"),
-		GtBin:        gtBin,
-		BdBin:        bdBin,
+		GtBin:        envOr("GT_BIN", "gt"),
+		BdBin:        envOr("BD_BIN", "bd"),
 		PollInterval: pollInterval,
 		StateFile:    stateFile,
 	}
@@ -107,10 +97,6 @@ func gt(cfg Config, args ...string) string {
 	return runCmd(cfg, append([]string{cfg.GtBin}, args...))
 }
 
-func bd(cfg Config, args ...string) string {
-	return runCmd(cfg, append([]string{cfg.BdBin}, args...))
-}
-
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -128,7 +114,6 @@ func mono(s string) string {
 }
 
 func tryParseJSON(raw string) interface{} {
-	// strip leading non-JSON lines (e.g. "Note: No git repository...")
 	lines := strings.Split(raw, "\n")
 	start := 0
 	for i, l := range lines {
@@ -145,20 +130,6 @@ func tryParseJSON(raw string) interface{} {
 		return nil
 	}
 	return result
-}
-
-func asSlice(v interface{}) []map[string]interface{} {
-	arr, ok := v.([]interface{})
-	if !ok {
-		return nil
-	}
-	var out []map[string]interface{}
-	for _, item := range arr {
-		if m, ok := item.(map[string]interface{}); ok {
-			out = append(out, m)
-		}
-	}
-	return out
 }
 
 func str(m map[string]interface{}, key string) string {
@@ -235,140 +206,35 @@ func fmtStatus(raw string) string {
 }
 
 func fmtMail(raw string) string {
-	items := asSlice(tryParseJSON(raw))
-	if items == nil {
+	data, ok := tryParseJSON(raw).([]interface{})
+	if !ok {
 		return mono(raw)
 	}
-	if len(items) == 0 {
+	if len(data) == 0 {
 		return "📭 Inbox empty."
 	}
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("📬 *Inbox* (%d messages)\n\n", len(items)))
+	b.WriteString(fmt.Sprintf("📬 *Inbox* (%d messages)\n\n", len(data)))
 	limit := 15
-	if len(items) < limit {
-		limit = len(items)
+	if len(data) < limit {
+		limit = len(data)
 	}
-	for _, m := range items[:limit] {
+	for _, raw := range data[:limit] {
+		m, ok := raw.(map[string]interface{})
+		if !ok {
+			continue
+		}
 		icon := "  "
 		if !boolean(m, "read") {
 			icon = "🔴"
 		}
 		b.WriteString(fmt.Sprintf("%s `%s` from `%s`\n    %s\n", icon, str(m, "id"), str(m, "from"), str(m, "subject")))
 	}
-	if len(items) > 15 {
-		b.WriteString(fmt.Sprintf("\n… and %d more", len(items)-15))
+	if len(data) > 15 {
+		b.WriteString(fmt.Sprintf("\n… and %d more", len(data)-15))
 	}
 	return b.String()
-}
-
-func fmtReady(raw string) string {
-	items := asSlice(tryParseJSON(raw))
-	if items == nil {
-		return mono(raw)
-	}
-	if len(items) == 0 {
-		return "✅ No issues ready — all clear."
-	}
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("📋 *Ready issues* (%d)\n\n", len(items)))
-	limit := 20
-	if len(items) < limit {
-		limit = len(items)
-	}
-	for _, issue := range items[:limit] {
-		b.WriteString(fmt.Sprintf("  `%s` P%.0f — %s\n", str(issue, "id"), num(issue, "priority"), str(issue, "title")))
-	}
-	if len(items) > 20 {
-		b.WriteString(fmt.Sprintf("\n… and %d more", len(items)-20))
-	}
-	return b.String()
-}
-
-func fmtConvoys(raw string) string {
-	items := asSlice(tryParseJSON(raw))
-	if items == nil {
-		return mono(raw)
-	}
-	if len(items) == 0 {
-		return "🚚 No active convoys."
-	}
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🚚 *Convoys* (%d)\n\n", len(items)))
-	limit := 15
-	if len(items) < limit {
-		limit = len(items)
-	}
-	for _, c := range items[:limit] {
-		b.WriteString(fmt.Sprintf("  `%s` [%s] %s\n", str(c, "id"), str(c, "status"), str(c, "title")))
-	}
-	return b.String()
-}
-
-func fmtPolecats(raw string) string {
-	items := asSlice(tryParseJSON(raw))
-	if items == nil {
-		if strings.Contains(raw, "null") || strings.TrimSpace(raw) == "null" {
-			return "🐾 No active polecats."
-		}
-		return mono(raw)
-	}
-	if len(items) == 0 {
-		return "🐾 No active polecats."
-	}
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("🐾 *Polecats* (%d)\n\n", len(items)))
-	for _, p := range items {
-		bead := str(p, "bead")
-		beadStr := ""
-		if bead != "" {
-			beadStr = fmt.Sprintf(" → `%s`", bead)
-		}
-		b.WriteString(fmt.Sprintf("  `%s/%s` [%s]%s\n", str(p, "rig"), str(p, "name"), str(p, "status"), beadStr))
-	}
-	return b.String()
-}
-
-// ---------------------------------------------------------------------------
-// Pending actions (confirmation flow)
-// ---------------------------------------------------------------------------
-
-type PendingAction struct {
-	Cmd  []string
-	Desc string
-}
-
-var (
-	pendingMu      sync.Mutex
-	pendingActions = make(map[string]PendingAction)
-)
-
-func storePending(id string, action PendingAction) {
-	pendingMu.Lock()
-	defer pendingMu.Unlock()
-	pendingActions[id] = action
-}
-
-func popPending(id string) (PendingAction, bool) {
-	pendingMu.Lock()
-	defer pendingMu.Unlock()
-	a, ok := pendingActions[id]
-	if ok {
-		delete(pendingActions, id)
-	}
-	return a, ok
-}
-
-func confirmKeyboard(actionID string) tgbotapi.InlineKeyboardMarkup {
-	return tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			tgbotapi.NewInlineKeyboardButtonData("✅ Confirm", "confirm:"+actionID),
-			tgbotapi.NewInlineKeyboardButtonData("❌ Cancel", "cancel:"+actionID),
-		),
-	)
 }
 
 // ---------------------------------------------------------------------------
@@ -397,14 +263,18 @@ func saveState(path string, s BotState) {
 
 func pollMail(bot *tgbotapi.BotAPI, cfg Config) {
 	raw := gt(cfg, "mail", "inbox", "--json")
-	items := asSlice(tryParseJSON(raw))
-	if items == nil {
+	parsed, ok := tryParseJSON(raw).([]interface{})
+	if !ok {
 		return
 	}
 
-	var unread []map[string]interface{}
 	unreadIDs := make(map[string]bool)
-	for _, m := range items {
+	var unread []map[string]interface{}
+	for _, item := range parsed {
+		m, ok := item.(map[string]interface{})
+		if !ok {
+			continue
+		}
 		if !boolean(m, "read") {
 			unread = append(unread, m)
 			unreadIDs[str(m, "id")] = true
@@ -445,7 +315,6 @@ func pollMail(bot *tgbotapi.BotAPI, cfg Config) {
 		}
 	}
 
-	// Update state
 	var ids []string
 	for id := range unreadIDs {
 		ids = append(ids, id)
@@ -501,12 +370,7 @@ func main() {
 	}()
 
 	for update := range updates {
-		if update.CallbackQuery != nil {
-			handleCallback(bot, cfg, update.CallbackQuery)
-			continue
-		}
-
-		if update.Message == nil || !update.Message.IsCommand() {
+		if update.Message == nil {
 			continue
 		}
 
@@ -516,7 +380,7 @@ func main() {
 			continue
 		}
 
-		handleCommand(bot, cfg, update.Message)
+		handleMessage(bot, cfg, update.Message)
 	}
 }
 
@@ -538,190 +402,63 @@ func sendLoading(bot *tgbotapi.BotAPI, chatID int64, text string) int {
 	return sent.MessageID
 }
 
-func handleCommand(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
+func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 	chatID := msg.Chat.ID
-	args := strings.Fields(msg.CommandArguments())
 
-	switch msg.Command() {
+	// If it's a command, handle the few we keep
+	if msg.IsCommand() {
+		switch msg.Command() {
+		case "start":
+			sendMsg(bot, chatID, fmt.Sprintf(
+				"🏭 Gas Town Bot ready.\n\nYour chat ID: `%d`\n\nUse /help to see commands.", chatID))
 
-	// --- Utility ---
+		case "help":
+			sendMsg(bot, chatID, "*Gas Town Bot*\n\n"+
+				"*Commands:*\n"+
+				"  /status — Town overview\n"+
+				"  /version — Gas Town version\n"+
+				"  /help — This message\n\n"+
+				"*Talk to mayor:*\n"+
+				"  /mayor `<message>` — Send instruction to mayor\n\n"+
+				"Or just type a message without any command — it goes straight to the mayor.\n\n"+
+				"_Examples:_\n"+
+				"  `Check abp PRs and merge what's ready`\n"+
+				"  `Create a convoy for cocuk feature work`\n"+
+				"  `What's the status of abp rig?`")
 
-	case "start":
-		sendMsg(bot, chatID, fmt.Sprintf(
-			"🏭 Gas Town Bot ready.\n\nYour chat ID: `%d`\n\nUse /help to see available commands.", chatID))
+		case "status":
+			mid := sendLoading(bot, chatID, "⏳ Fetching status…")
+			raw := gt(cfg, "status", "--json")
+			sendEdit(bot, chatID, mid, fmtStatus(raw))
 
-	case "help":
-		sendMsg(bot, chatID, "*Gas Town Bot Commands*\n\n"+
-			"*Read-only:*\n"+
-			"  /status — Town overview\n"+
-			"  /mail — Show inbox\n"+
-			"  /read `<id>` — Read a message\n"+
-			"  /rigs — List rigs\n"+
-			"  /polecats — List polecats\n"+
-			"  /ready — Issues ready to work\n"+
-			"  /hook — Check what's hooked\n"+
-			"  /convoys — Convoy dashboard\n"+
-			"  /version — Gas Town version\n\n"+
-			"*Actions (with confirmation):*\n"+
-			"  /sling `<bead> <rig>` — Spawn polecat\n"+
-			"  /nudge `<target> <msg>` — Nudge agent\n"+
-			"  /send `<addr>` `<msg>` — Send mail\n"+
-			"  /markread `<id>` — Mark mail read")
+		case "version":
+			raw := gt(cfg, "version")
+			sendMsg(bot, chatID, fmt.Sprintf("`%s`", raw))
 
-	case "version":
-		raw := gt(cfg, "version")
-		sendMsg(bot, chatID, fmt.Sprintf("`%s`", raw))
+		case "mayor":
+			text := msg.CommandArguments()
+			if text == "" {
+				sendMsg(bot, chatID, "Usage: /mayor <message>\n\nOr just type without a command.")
+				return
+			}
+			nudgeMayor(bot, cfg, chatID, text)
 
-	// --- Read-only ---
-
-	case "status":
-		mid := sendLoading(bot, chatID, "⏳ Fetching status…")
-		raw := gt(cfg, "status", "--json")
-		sendEdit(bot, chatID, mid, fmtStatus(raw))
-
-	case "mail":
-		mid := sendLoading(bot, chatID, "⏳ Checking mail…")
-		raw := gt(cfg, "mail", "inbox", "--json")
-		sendEdit(bot, chatID, mid, fmtMail(raw))
-
-	case "read":
-		if len(args) == 0 {
-			sendMsg(bot, chatID, "Usage: /read <mail-id>")
-			return
+		default:
+			sendMsg(bot, chatID, "Unknown command. Use /help or just type a message for the mayor.")
 		}
-		mid := sendLoading(bot, chatID, fmt.Sprintf("⏳ Reading %s…", args[0]))
-		raw := gt(cfg, "mail", "read", args[0])
-		sendEdit(bot, chatID, mid, mono(raw))
-
-	case "rigs":
-		mid := sendLoading(bot, chatID, "⏳ Listing rigs…")
-		raw := gt(cfg, "rig", "list")
-		sendEdit(bot, chatID, mid, mono(raw))
-
-	case "polecats":
-		mid := sendLoading(bot, chatID, "⏳ Listing polecats…")
-		raw := gt(cfg, "polecat", "list", "--all", "--json")
-		sendEdit(bot, chatID, mid, fmtPolecats(raw))
-
-	case "ready":
-		mid := sendLoading(bot, chatID, "⏳ Checking ready issues…")
-		raw := bd(cfg, "ready", "--json")
-		sendEdit(bot, chatID, mid, fmtReady(raw))
-
-	case "hook":
-		mid := sendLoading(bot, chatID, "⏳ Checking hook…")
-		raw := gt(cfg, "hook")
-		sendEdit(bot, chatID, mid, mono(raw))
-
-	case "convoys":
-		mid := sendLoading(bot, chatID, "⏳ Loading convoys…")
-		raw := gt(cfg, "convoy", "list", "--json")
-		sendEdit(bot, chatID, mid, fmtConvoys(raw))
-
-	// --- Actions (with confirmation) ---
-
-	case "sling":
-		if len(args) < 2 {
-			sendMsg(bot, chatID, "Usage: /sling <bead-id> <rig>")
-			return
-		}
-		actionID := fmt.Sprintf("sling-%s-%d", args[0], time.Now().UnixMilli())
-		storePending(actionID, PendingAction{
-			Cmd:  []string{cfg.GtBin, "sling", args[0], args[1]},
-			Desc: fmt.Sprintf("sling `%s` → `%s`", args[0], args[1]),
-		})
-		m := tgbotapi.NewMessage(chatID, fmt.Sprintf("⚠️ Confirm: sling `%s` → `%s`?", args[0], args[1]))
-		m.ParseMode = "Markdown"
-		kb := confirmKeyboard(actionID)
-		m.ReplyMarkup = kb
-		bot.Send(m)
-
-	case "nudge":
-		if len(args) < 2 {
-			sendMsg(bot, chatID, "Usage: /nudge <target> <message>")
-			return
-		}
-		target := args[0]
-		message := strings.Join(args[1:], " ")
-		actionID := fmt.Sprintf("nudge-%s-%d", target, time.Now().UnixMilli())
-		storePending(actionID, PendingAction{
-			Cmd:  []string{cfg.GtBin, "nudge", target, message},
-			Desc: fmt.Sprintf("nudge `%s`", target),
-		})
-		m := tgbotapi.NewMessage(chatID, fmt.Sprintf("⚠️ Confirm: nudge `%s`?\n\n_%s_", target, message))
-		m.ParseMode = "Markdown"
-		kb := confirmKeyboard(actionID)
-		m.ReplyMarkup = kb
-		bot.Send(m)
-
-	case "send":
-		if len(args) < 2 {
-			sendMsg(bot, chatID, "Usage: /send <address> <message>")
-			return
-		}
-		addr := args[0]
-		message := strings.Join(args[1:], " ")
-		actionID := fmt.Sprintf("send-%s-%d", addr, time.Now().UnixMilli())
-		storePending(actionID, PendingAction{
-			Cmd:  []string{cfg.GtBin, "mail", "send", addr, "-s", "Via Telegram", "-m", message},
-			Desc: fmt.Sprintf("send mail to `%s`", addr),
-		})
-		m := tgbotapi.NewMessage(chatID, fmt.Sprintf("⚠️ Confirm: send mail to `%s`?\n\n_%s_", addr, message))
-		m.ParseMode = "Markdown"
-		kb := confirmKeyboard(actionID)
-		m.ReplyMarkup = kb
-		bot.Send(m)
-
-	case "markread":
-		if len(args) == 0 {
-			sendMsg(bot, chatID, "Usage: /markread <mail-id>")
-			return
-		}
-		actionID := fmt.Sprintf("markread-%s-%d", args[0], time.Now().UnixMilli())
-		storePending(actionID, PendingAction{
-			Cmd:  []string{cfg.GtBin, "mail", "mark-read", args[0]},
-			Desc: fmt.Sprintf("mark `%s` as read", args[0]),
-		})
-		m := tgbotapi.NewMessage(chatID, fmt.Sprintf("⚠️ Confirm: mark `%s` as read?", args[0]))
-		m.ParseMode = "Markdown"
-		kb := confirmKeyboard(actionID)
-		m.ReplyMarkup = kb
-		bot.Send(m)
+		return
 	}
+
+	// Plain text → send to mayor
+	text := strings.TrimSpace(msg.Text)
+	if text == "" {
+		return
+	}
+	nudgeMayor(bot, cfg, chatID, text)
 }
 
-func handleCallback(bot *tgbotapi.BotAPI, cfg Config, cb *tgbotapi.CallbackQuery) {
-	if !cfg.ChatIDs[cb.Message.Chat.ID] {
-		callback := tgbotapi.NewCallback(cb.ID, "Unauthorized")
-		bot.Request(callback)
-		return
-	}
-
-	callback := tgbotapi.NewCallback(cb.ID, "")
-	bot.Request(callback)
-
-	parts := strings.SplitN(cb.Data, ":", 2)
-	if len(parts) != 2 {
-		return
-	}
-	action, actionID := parts[0], parts[1]
-	chatID := cb.Message.Chat.ID
-	msgID := cb.Message.MessageID
-
-	if action == "cancel" {
-		popPending(actionID)
-		sendEdit(bot, chatID, msgID, "❌ Cancelled.")
-		return
-	}
-
-	if action == "confirm" {
-		pending, ok := popPending(actionID)
-		if !ok {
-			sendEdit(bot, chatID, msgID, "⚠️ Action expired or not found.")
-			return
-		}
-		sendEdit(bot, chatID, msgID, fmt.Sprintf("⏳ Executing: %s…", pending.Desc))
-		raw := runCmd(cfg, pending.Cmd)
-		sendEdit(bot, chatID, msgID, fmt.Sprintf("✅ Done: %s\n\n%s", pending.Desc, mono(raw)))
-	}
+func nudgeMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
+	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
+	raw := gt(cfg, "nudge", "mayor/", text)
+	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_\n\n%s", text, mono(raw)))
 }
