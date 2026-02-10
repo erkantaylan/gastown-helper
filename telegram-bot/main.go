@@ -198,7 +198,35 @@ func fmtStatus(raw string) string {
 			if !ok {
 				continue
 			}
-			b.WriteString(fmt.Sprintf("  🔧 `%s` — %.0f polecats\n", str(r, "name"), num(r, "polecat_count")))
+			pcCount := num(r, "polecat_count")
+			crewCount := num(r, "crew_count")
+			b.WriteString(fmt.Sprintf("  🔧 `%s` — %.0f polecats, %.0f crew\n", str(r, "name"), pcCount, crewCount))
+
+			// Show crew and rig agents
+			if agents, ok := r["agents"].([]interface{}); ok {
+				for _, aRaw := range agents {
+					a, ok := aRaw.(map[string]interface{})
+					if !ok {
+						continue
+					}
+					role := str(a, "role")
+					icon := "⚫"
+					if boolean(a, "running") {
+						icon = "🟢"
+					}
+					unread := ""
+					if n := num(a, "unread_mail"); n > 0 {
+						unread = fmt.Sprintf(" 📬%.0f", n)
+					}
+					work := ""
+					if boolean(a, "has_work") {
+						work = " 🔨"
+					}
+					if role == "crew" {
+						b.WriteString(fmt.Sprintf("    %s 👷 `%s`%s%s\n", icon, str(a, "name"), work, unread))
+					}
+				}
+			}
 		}
 	}
 
