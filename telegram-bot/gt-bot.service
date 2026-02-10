@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python3 /home/gastown/gastown-helper/telegram-bot/gt_bot.py
+ExecStart=/home/gastown/gastown-helper/telegram-bot/gt-bot
 WorkingDirectory=/home/gastown/antik
 EnvironmentFile=/home/gastown/gastown-helper/telegram-bot/.env
 Restart=on-failure

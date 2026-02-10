@@ -24,18 +24,16 @@ cp .env.example .env
 # Edit .env with your token and chat ID
 ```
 
-### 4. Install dependencies
+### 4. Build
 
 ```bash
-pip install -r requirements.txt
-# or
-python3 -m pip install -r requirements.txt
+go build -o gt-bot .
 ```
 
 ### 5. Test
 
 ```bash
-python3 gt_bot.py
+./gt-bot
 ```
 
 Send `/status` from Telegram to verify.
@@ -43,14 +41,11 @@ Send `/status` from Telegram to verify.
 ### 6. Install as service
 
 ```bash
-# Create user systemd directory if needed
 mkdir -p ~/.config/systemd/user
 
-# Link the service file
 ln -s /home/gastown/gastown-helper/telegram-bot/gt-bot.service \
       ~/.config/systemd/user/gt-bot.service
 
-# Enable and start
 systemctl --user daemon-reload
 systemctl --user enable gt-bot
 systemctl --user start gt-bot
