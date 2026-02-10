@@ -417,15 +417,14 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 				"*Commands:*\n"+
 				"  /status — Town overview\n"+
 				"  /version — Gas Town version\n"+
-				"  /nudge — Wake the mayor (check mail + act)\n"+
+				"  /nudge — Wake the mayor\n"+
+				"  /crew `<name> <msg>` — Talk to a crew member\n"+
 				"  /help — This message\n\n"+
 				"*Talk to mayor:*\n"+
-				"Just type a message — it queues as mail to the mayor.\n\n"+
-				"_Workflow:_ Send messages, then /nudge when ready.\n\n"+
+				"Just type a message — it sends to the mayor and nudges.\n\n"+
 				"_Examples:_\n"+
 				"  `Merge all abp feature branches`\n"+
-				"  `Create a convoy for cocuk feature work`\n"+
-				"  then → /nudge")
+				"  /crew bender merge all open PRs")
 
 		case "status":
 			mid := sendLoading(bot, chatID, "⏳ Fetching status…")
@@ -449,6 +448,16 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 			raw := gt(cfg, "nudge", "mayor", "Check your inbox — new instructions from Telegram")
 			sendEdit(bot, chatID, mid, fmt.Sprintf("🔔 Mayor nudged.\n\n%s", mono(raw)))
 
+		case "crew":
+			args := strings.Fields(msg.CommandArguments())
+			if len(args) < 2 {
+				sendMsg(bot, chatID, "Usage: /crew `<name>` `<message>`\n\n_Example:_ /crew bender merge all open PRs")
+				return
+			}
+			crewName := args[0]
+			crewMsg := strings.Join(args[1:], " ")
+			mailCrew(bot, cfg, chatID, crewName, crewMsg)
+
 		default:
 			sendMsg(bot, chatID, "Unknown command. Use /help or just type a message for the mayor.")
 		}
@@ -468,4 +477,16 @@ func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task")
 	gt(cfg, "nudge", "mayor", "Check your inbox — new instructions from Telegram")
 	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_", text))
+}
+
+func mailCrew(bot *tgbotapi.BotAPI, cfg Config, chatID int64, name string, text string) {
+	mid := sendLoading(bot, chatID, fmt.Sprintf("📨 Sending to %s…", name))
+	// Try to find which rig the crew is in by sending mail — gts resolves the address
+	raw := gt(cfg, "mail", "send", name, "-s", "📱 Telegram", "-m", text, "--type", "task")
+	if strings.Contains(raw, "Error") || strings.Contains(raw, "error") {
+		sendEdit(bot, chatID, mid, fmt.Sprintf("❌ Failed to send to `%s`:\n%s", name, mono(raw)))
+		return
+	}
+	gt(cfg, "nudge", name, "Check your inbox — new instructions from Telegram")
+	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to `%s`:\n_%s_", name, text))
 }
