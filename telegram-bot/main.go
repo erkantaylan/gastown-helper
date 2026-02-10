@@ -459,6 +459,6 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 
 func nudgeMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
-	raw := gt(cfg, "nudge", "mayor/", text)
+	raw := gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task", "--notify")
 	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_\n\n%s", text, mono(raw)))
 }
