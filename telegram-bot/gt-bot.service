@@ -1,0 +1,14 @@
+[Unit]
+Description=Gas Town Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/gastown/gastown-helper/telegram-bot/gt_bot.py
+WorkingDirectory=/home/gastown/antik
+EnvironmentFile=/home/gastown/gastown-helper/telegram-bot/.env
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
