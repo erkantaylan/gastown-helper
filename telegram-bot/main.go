@@ -465,7 +465,7 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 
 func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
-	raw := gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task")
-	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Queued for mayor:\n_%s_", text))
-	_ = raw
+	gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task")
+	gt(cfg, "nudge", "mayor", "Check your inbox — new instructions from Telegram")
+	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_", text))
 }
