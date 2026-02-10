@@ -507,14 +507,50 @@ func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_", text))
 }
 
+func resolveCrew(cfg Config, name string) string {
+	// Look up which rig has this crew member via gts status --json
+	raw := gt(cfg, "status", "--json")
+	data, ok := tryParseJSON(raw).(map[string]interface{})
+	if !ok {
+		return ""
+	}
+	rigs, ok := data["rigs"].([]interface{})
+	if !ok {
+		return ""
+	}
+	for _, rigRaw := range rigs {
+		rig, ok := rigRaw.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		crews, ok := rig["crews"].([]interface{})
+		if !ok {
+			continue
+		}
+		for _, c := range crews {
+			if fmt.Sprintf("%v", c) == name {
+				return fmt.Sprintf("%s/%s", str(rig, "name"), name)
+			}
+		}
+	}
+	return ""
+}
+
 func mailCrew(bot *tgbotapi.BotAPI, cfg Config, chatID int64, name string, text string) {
 	mid := sendLoading(bot, chatID, fmt.Sprintf("📨 Sending to %s…", name))
-	// Try to find which rig the crew is in by sending mail — gts resolves the address
-	raw := gt(cfg, "mail", "send", name, "-s", "📱 Telegram", "-m", text, "--type", "task")
-	if strings.Contains(raw, "Error") || strings.Contains(raw, "error") {
-		sendEdit(bot, chatID, mid, fmt.Sprintf("❌ Failed to send to `%s`:\n%s", name, mono(raw)))
+
+	// Resolve crew name to rig/name address
+	addr := resolveCrew(cfg, name)
+	if addr == "" {
+		sendEdit(bot, chatID, mid, fmt.Sprintf("❌ Crew member `%s` not found in any rig.", name))
 		return
 	}
-	gt(cfg, "nudge", name, "Check your inbox — new instructions from Telegram")
-	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to `%s`:\n_%s_", name, text))
+
+	raw := gt(cfg, "mail", "send", addr, "-s", "📱 Telegram", "-m", text, "--type", "task")
+	if strings.Contains(raw, "Error") || strings.Contains(raw, "error") {
+		sendEdit(bot, chatID, mid, fmt.Sprintf("❌ Failed to send to `%s`:\n%s", addr, mono(raw)))
+		return
+	}
+	gt(cfg, "nudge", addr, "Check your inbox — new instructions from Telegram")
+	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to `%s`:\n_%s_", addr, text))
 }
