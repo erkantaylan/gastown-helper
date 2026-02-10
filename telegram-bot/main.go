@@ -417,14 +417,15 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 				"*Commands:*\n"+
 				"  /status — Town overview\n"+
 				"  /version — Gas Town version\n"+
+				"  /nudge — Wake the mayor (check mail + act)\n"+
 				"  /help — This message\n\n"+
 				"*Talk to mayor:*\n"+
-				"  /mayor `<message>` — Send instruction to mayor\n\n"+
-				"Or just type a message without any command — it goes straight to the mayor.\n\n"+
+				"Just type a message — it queues as mail to the mayor.\n\n"+
+				"_Workflow:_ Send messages, then /nudge when ready.\n\n"+
 				"_Examples:_\n"+
-				"  `Check abp PRs and merge what's ready`\n"+
+				"  `Merge all abp feature branches`\n"+
 				"  `Create a convoy for cocuk feature work`\n"+
-				"  `What's the status of abp rig?`")
+				"  then → /nudge")
 
 		case "status":
 			mid := sendLoading(bot, chatID, "⏳ Fetching status…")
@@ -441,7 +442,12 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 				sendMsg(bot, chatID, "Usage: /mayor <message>\n\nOr just type without a command.")
 				return
 			}
-			nudgeMayor(bot, cfg, chatID, text)
+			mailMayor(bot, cfg, chatID, text)
+
+		case "nudge":
+			mid := sendLoading(bot, chatID, "🔔 Nudging mayor…")
+			raw := gt(cfg, "nudge", "mayor", "Check your inbox — new instructions from Telegram")
+			sendEdit(bot, chatID, mid, fmt.Sprintf("🔔 Mayor nudged.\n\n%s", mono(raw)))
 
 		default:
 			sendMsg(bot, chatID, "Unknown command. Use /help or just type a message for the mayor.")
@@ -454,11 +460,12 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 	if text == "" {
 		return
 	}
-	nudgeMayor(bot, cfg, chatID, text)
+	mailMayor(bot, cfg, chatID, text)
 }
 
-func nudgeMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
+func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
-	raw := gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task", "--notify")
-	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_\n\n%s", text, mono(raw)))
+	raw := gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task")
+	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Queued for mayor:\n_%s_", text))
+	_ = raw
 }
