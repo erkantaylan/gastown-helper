@@ -502,8 +502,7 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 
 func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
-	gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text, "--type", "task")
-	gt(cfg, "nudge", "mayor", "Check your inbox — new instructions from Telegram")
+	gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text)
 	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_", text))
 }
 
