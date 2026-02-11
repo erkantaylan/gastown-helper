@@ -41,27 +41,17 @@ for rig in rigs:
         if a.get('role') == 'refinery' and a.get('running'):
             refinery_up = True
 
-    # Use text markers instead of emoji to avoid width jitter
+    # Rig status icon
     if polecats > 0:
-        marker = '[W]'  # working
+        icon = '🔨'  # working
     elif witness_up and refinery_up:
-        marker = '[+]'  # operational
+        icon = '🟢'  # operational
     elif witness_up or refinery_up:
-        marker = '[~]'  # partial
+        icon = '🟡'  # partial
     else:
-        marker = '[-]'  # stopped
+        icon = '⚫'  # stopped
 
-    info = f'{marker} {name}'
-    details = []
-    if polecats > 0:
-        details.append(f'{polecats}p')
-    if crew > 0:
-        details.append(f'{crew}c')
-    if details:
-        sep = '|'
-        info += '(' + sep.join(details) + ')'
-
-    parts.append(info)
+    parts.append(f'{icon} {name}')
 
 print(' ' + '  '.join(parts))
 " <<< "$json"
