@@ -22,6 +22,9 @@ if not rigs:
     print(' No rigs')
     sys.exit(0)
 
+# Sort by name for stable order
+rigs.sort(key=lambda r: r['name'])
+
 parts = []
 for rig in rigs:
     name = rig['name']
@@ -38,24 +41,25 @@ for rig in rigs:
         if a.get('role') == 'refinery' and a.get('running'):
             refinery_up = True
 
-    # Rig status icon
+    # Use text markers instead of emoji to avoid width jitter
     if polecats > 0:
-        icon = '🔨'  # working
+        marker = '[W]'  # working
     elif witness_up and refinery_up:
-        icon = '🟢'  # operational
+        marker = '[+]'  # operational
     elif witness_up or refinery_up:
-        icon = '🟡'  # partial
+        marker = '[~]'  # partial
     else:
-        icon = '⚫'  # stopped
+        marker = '[-]'  # stopped
 
-    info = f'{icon} {name}'
+    info = f'{marker} {name}'
     details = []
     if polecats > 0:
         details.append(f'{polecats}p')
     if crew > 0:
         details.append(f'{crew}c')
     if details:
-        info += f'({\"|\".join(details)})'
+        sep = '|'
+        info += '(' + sep.join(details) + ')'
 
     parts.append(info)
 
