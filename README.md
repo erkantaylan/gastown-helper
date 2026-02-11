@@ -9,6 +9,7 @@ Setup scripts, tools, and docs for [Gas Town](https://github.com/steveyegge/gast
 | `setup-town.sh` | Bootstrap a Gas Town instance on fresh Ubuntu/Debian |
 | `telegram-bot/` | Telegram bot for mobile Gas Town control |
 | `tmux-rig-status.sh` | Second tmux status line showing rig overview |
+| `tmux-status-right.sh` | First line filter — strips rig LEDs (shown on second line) |
 | `tmux-rig-status-setup.sh` | One-time setup for the second status line |
 | `docs/` | Guides and reference docs |
 
