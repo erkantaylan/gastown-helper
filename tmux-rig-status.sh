@@ -51,7 +51,7 @@ for rig in rigs:
     else:
         icon = '⚫'  # stopped
 
-    parts.append(f'{icon} {name}')
+    parts.append(f'{icon}{name}')
 
-print(' ' + '  '.join(parts))
+print(' '.join(parts))
 " <<< "$json"

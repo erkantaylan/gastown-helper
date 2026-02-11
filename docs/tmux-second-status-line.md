@@ -31,11 +31,12 @@ Polecat and crew counts shown in parentheses when present: `listen(2p|1c)`
 ./tmux-rig-status-setup.sh
 ```
 
-This does three things:
+This does five things:
 1. Enables 2 status lines (`tmux set-option -g status 2`)
 2. Sets the second line with rig overview
 3. Removes rig LEDs from the first line
 4. Fixes background fill color (prevents brown gaps on some terminals)
+5. Hides the window list (e.g. `0:claude*`) — redundant with a single window
 
 ### Persistent (add to ~/.bashrc)
 
@@ -58,6 +59,7 @@ This does three things:
 - `tmux-status-right.sh` wraps `gt status-line`, filtering out rig LED entries
 - Tmux runs both scripts every `status-interval` seconds (default 5s)
 - `fill=colour232` ensures the background covers the entire line width
+- Window list (e.g. `0:claude*`) is hidden since it's redundant with a single window
 - No modification to the `gt` binary needed
 
 ## Disable
@@ -68,6 +70,10 @@ tmux set-option -g status 1
 
 # Restore rig LEDs on first line (if needed)
 tmux set-option -t hq-mayor status-right '#(gt status-line --session=hq-mayor 2>/dev/null) %H:%M'
+
+# Restore window list (if needed)
+tmux set-option -gu window-status-current-format
+tmux set-option -gu window-status-format
 ```
 
 ## Terminal Compatibility
