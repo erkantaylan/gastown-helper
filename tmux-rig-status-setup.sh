@@ -26,7 +26,13 @@ fi
 tmux set-option -g window-status-current-format ""
 tmux set-option -g window-status-format ""
 
+MAYOR_NAME=$(cat ~/.gt-mayor-name 2>/dev/null || echo "")
 echo "✓ Second status line enabled"
+if [ -n "$MAYOR_NAME" ]; then
+  echo "  Mayor: $MAYOR_NAME (from ~/.gt-mayor-name)"
+else
+  echo "  Tip: echo 'YourName' > ~/.gt-mayor-name to show your name on the status bar"
+fi
 echo "  Line 1: agent counts, hooked work, mail (no rig LEDs, no window list)"
 echo "  Line 2: rig names with status icons"
 echo "  Refresh: every $(tmux show-option -gv status-interval 2>/dev/null || echo 5)s"
