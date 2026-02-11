@@ -3,7 +3,7 @@
 # Strips rig LEDs from gt status-line (rigs shown on second line instead)
 
 SESSION="${1:-hq-mayor}"
-GT_BIN="${GT_BIN:-/home/kamyon/go/bin/gt}"
+GT_BIN="${GT_BIN:-$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)}"
 
 line=$("$GT_BIN" status-line --session="$SESSION" 2>/dev/null)
 

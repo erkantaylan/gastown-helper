@@ -2,7 +2,7 @@
 # tmux-rig-status.sh — Second tmux status line showing rig overview
 # Used as: tmux status-format[1] '#(path/to/tmux-rig-status.sh)'
 
-GT_BIN="${GT_BIN:-/home/kamyon/go/bin/gt}"
+GT_BIN="${GT_BIN:-$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)}"
 export NO_COLOR=1
 
 json=$("$GT_BIN" status --json 2>/dev/null)
