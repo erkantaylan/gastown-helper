@@ -8,6 +8,8 @@ Setup scripts, tools, and docs for [Gas Town](https://github.com/steveyegge/gast
 |------|-------------|
 | `setup-town.sh` | Bootstrap a Gas Town instance on fresh Ubuntu/Debian |
 | `telegram-bot/` | Telegram bot for mobile Gas Town control |
+| `tmux-rig-status.sh` | Second tmux status line showing rig overview |
+| `tmux-rig-status-setup.sh` | One-time setup for the second status line |
 | `docs/` | Guides and reference docs |
 
 ## Setup Script
@@ -59,6 +61,7 @@ See [telegram-bot/README.md](telegram-bot/README.md) for setup.
 | Doc | Description |
 |-----|-------------|
 | [tmux-statusbar.md](docs/tmux-statusbar.md) | Customize the Gas Town tmux status bar |
+| [tmux-second-status-line.md](docs/tmux-second-status-line.md) | Add a rig overview second status line |
 | [dev-sandbox-setup.md](docs/dev-sandbox-setup.md) | Run Gas Town from source in isolation |
 
 ## Requirements
