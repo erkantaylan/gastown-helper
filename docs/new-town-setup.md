@@ -8,12 +8,17 @@ Two-line status bar with a clean split:
 - **Line 1**: your mayor name (left) + agent counts, mail, hooked work (right) — **no rig LEDs**
 - **Line 2**: rig names with status icons — rigs only appear here
 
-The setup script does 3 important things:
-1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
-2. **Strips rig LEDs from line 1** so they don't duplicate with line 2
-3. **Adds line 2** with compact rig status icons
+**IMPORTANT: Do NOT reimplement this manually. Run the actual `tmux-rig-status-setup.sh` script.** It handles everything including styling that's easy to miss.
 
-Without the setup script you'll see the default `🎩 Mayor` with rig LEDs on both lines.
+The setup script does these things:
+1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
+2. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] on **grey background** (colour236)
+3. **Styles line 1 right**: uses `tmux-status-right.sh` to filter `gt status-line` — **strips rig LEDs** so they don't duplicate with line 2
+4. **Adds line 2** with dark background (colour232) showing compact rig status icons via `tmux-rig-status.sh`
+5. **Hides window list** (redundant with single window setup)
+6. **Fixes fill color** on both lines (prevents brown background on some terminals)
+
+Without the setup script you'll see the default `🎩 Mayor` with no bold/colors, rig LEDs duplicated on both lines.
 
 ### Prerequisites
 
@@ -50,10 +55,11 @@ echo 'run-shell "bash <your-town>/gthelper/refinery/rig/tmux-rig-status-setup.sh
 ```
 
 Key differences:
-- Mayor name instead of generic "Mayor"
-- Username and town shown on the left
+- Mayor name in **bold on yellow background** instead of generic "Mayor"
+- Username and town on grey background on the left
 - Rig LEDs removed from line 1 (no duplication)
-- Rigs shown compactly on line 2
+- Rigs shown compactly on dark background on line 2
+- Window list hidden
 
 ### Status Icons
 
