@@ -13,7 +13,7 @@ Two-line status bar with a clean split:
 The setup script does these things:
 1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
 2. **Sets explicit text colors** — `fg=colour245` (light grey) on `bg=colour232` (dark) for all status elements. Without this, text color inherits the terminal default (yellow in Terminator, different grey in GNOME Terminal, etc.)
-3. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] on **grey background** (colour236)
+3. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] in **bold white on blue background** (colour24), bot version badge on dark grey (colour238)
 4. **Styles line 1 right**: uses `tmux-status-right.sh` to filter `gt status-line` — **strips rig LEDs** so they don't duplicate with line 2
 5. **Adds line 2** with dark background (colour232) showing compact rig status icons via `tmux-rig-status.sh`
 6. **Hides window list** (redundant with single window setup)
@@ -51,13 +51,14 @@ echo 'run-shell "bash <your-town>/gthelper/refinery/rig/tmux-rig-status-setup.sh
 
 **After** (with setup script):
 ```
-🎩 Kael  kamyon[gt-01]       0/2 🦉 2/2 🏭 | 📬 | 12:20
+🎩 Kael  kamyon[gt-01] 📱v1       0/2 🦉 2/2 🏭 | 📬 | 12:20
 ⚫abp 🟢scs ⚫gthelper
 ```
 
 Key differences:
 - Mayor name in **bold on yellow background** instead of generic "Mayor"
-- Username and town on grey background on the left
+- Username and town in **bold white on blue background** on the left
+- Bot version badge (`📱v1`) on dark grey background
 - Rig LEDs removed from line 1 (no duplication)
 - Rigs shown compactly on dark background on line 2
 - Window list hidden
@@ -105,7 +106,7 @@ cd <your-town>/gthelper/refinery/rig/telegram-bot/
 bash install.sh
 ```
 
-This builds the binary and copies it to `<your-town>/services/telegram-bot/`.
+This stops any running service, builds the binary, deploys it to `<your-town>/services/telegram-bot/`, installs the systemd service, and starts it.
 
 The install script auto-detects the town directory name and creates a **town-specific** service file: `gt-bot-<town-dir>.service`. This prevents conflicts when multiple towns run on the same machine.
 
@@ -133,14 +134,7 @@ STATE_FILE=<your-town>/services/telegram-bot/state.json
 
 #### Enable the service
 
-The service name includes your town directory name (e.g. `gt-bot-antik` for a town at `/home/gastown/antik`):
-
-```bash
-# install.sh prints the exact commands, but the pattern is:
-sudo cp <your-town>/services/telegram-bot/gt-bot-<town-dir>.service /etc/systemd/system/gt-bot-<town-dir>.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now gt-bot-<town-dir>
-```
+`install.sh` automatically installs and starts the service (requires sudo). The service name includes your town directory name (e.g. `gt-bot-antik` for a town at `/home/gastown/antik`).
 
 **IMPORTANT**: Do NOT use a generic name like `gt-bot.service` — if multiple towns share a machine, they'll overwrite each other's service.
 
@@ -157,11 +151,27 @@ Then send `/status` from Telegram — the bot should respond with your town over
 | Command | Description |
 |---------|-------------|
 | `/status` | Town overview (agents, rigs) |
-| `/version` | Gas Town version |
+| `/version` | Gas Town + bot version |
+| `/bot_version` | Bot version only |
 | `/nudge` | Wake the mayor |
 | `/crew <name> <msg>` | Talk to a crew member |
+| `/mayor_status` | Check if mayor agent is running |
+| `/mayor_start` | Start mayor agent |
+| `/mayor_stop` | Stop mayor agent |
+| `/mayor_restart` | Restart mayor agent |
 | `/help` | List commands |
 | _(plain text)_ | Sends message to mayor and nudges |
+
+### Mayor Power Commands
+
+Remote control the mayor agent from Telegram:
+
+- `/mayor_status` — check if the mayor is running, stopped, etc.
+- `/mayor_start` — start the mayor agent (handles "already running" gracefully)
+- `/mayor_stop` — stop the mayor agent
+- `/mayor_restart` — stop + start the mayor agent
+
+These run `gt mayor status|start|stop|restart` under the hood.
 
 ### How Telegram Communication Works
 
@@ -187,5 +197,21 @@ After source code changes in gthelper:
 ```bash
 cd <your-town>/gthelper/refinery/rig/telegram-bot/
 bash install.sh
-sudo systemctl restart gt-bot-<town-dir>
 ```
+
+`install.sh` handles the full deploy cycle: stop service, build, copy binary, regenerate service file, reload systemd, and restart. It prints the deployed version when done.
+
+### Versioning
+
+The bot has a version constant (`BotVersion`) in `main.go`. The binary supports `--version`:
+
+```bash
+./gt-bot --version   # prints e.g. "v1"
+```
+
+The version is shown in:
+- Startup log: `Gas Town Bot v1 — Authorized as @...`
+- `/version` command: shows both Gas Town and bot versions
+- `/bot_version` command: bot version only
+- `/help` header: `Gas Town Bot v1`
+- tmux status bar: `📱v1` badge on dark grey background after `username[town]`

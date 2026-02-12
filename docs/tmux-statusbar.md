@@ -1,54 +1,115 @@
-# Customizing the Gas Town tmux Status Bar
+# Gas Town Tmux Status Bar Setup
 
-Gas Town sets the tmux status bar automatically when creating sessions. You can override it per-session or persistently via `~/.bashrc`.
+## Overview
 
-## What Gas Town Sets by Default
+The Gas Town tmux status bar has two lines:
+- **Line 1**: Mayor name (left) + agent counts, mail, hooked work (right) + clock
+- **Line 2**: Rig names with status icons
 
-| Option | Default Value | Description |
-|--------|--------------|-------------|
-| `status-left` | `🎩 Mayor ` | Role indicator |
-| `status-right` | `#(gt status-line --session=hq-mayor 2>/dev/null) %H:%M` | Rig status + clock |
-| `status-style` | `bg=#3d3200,fg=#ffd700` | Mad Max gold theme |
-| Window list | `0:claude*` | Window index, program name, `*` = active |
-
-## Override: Show user:town in status bar
-
-Add to `~/.bashrc`:
+## Quick Setup
 
 ```bash
-# Override Gas Town tmux status-left with user:town
-[ -n "$TMUX" ] && tmux set-option status-left "🎩 Mayor | $(whoami):antik " 2>/dev/null
+# 1. Set your mayor name
+echo "YourName" > ~/.gt-mayor-name
+
+# 2. Run the setup script
+bash ~/Desktop/projects/gt-01/gthelper/refinery/rig/tmux-rig-status-setup.sh
+
+# 3. (Optional) Add to tmux.conf for persistence
+echo 'run-shell "bash ~/Desktop/projects/gt-01/gthelper/refinery/rig/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
 ```
 
-Replace `antik` with your town name (from `mayor/town.json`).
+## What It Does
 
-## Override: Hide the window list
+The setup script configures six things:
 
-The default window list shows `0:claude*` which is redundant when you only run one window. To hide it, add to `~/.bashrc`:
+1. **Enables 2 status lines** (`status 2`)
+2. **Status-left**: `🎩 MayorName` (bold, yellow background) + `username[town-dir]` (bold white on blue) + `📱v1` bot version badge (dark grey)
+3. **Status-right**: Filtered `gt status-line` (agent counts, mail, hooked work — no rig LEDs) + clock
+4. **Second line**: Rig names with status icons via `tmux-rig-status.sh`
+5. **Hides window list** (redundant with single window)
+6. **Fixes fill color** for both lines (prevents brown background on some terminals)
+
+## What You See
+
+### Line 1 (left side)
+```
+🎩 Kael  kamyon[gt-01] 📱v1
+```
+- Gold background on mayor name — bold, always visible
+- Blue background on username[town] — bold white, most prominent element
+- Dark grey background on bot version badge
+
+### Line 1 (right side)
+```
+1/1 🦉 2/2 🏭 | 📬 📱 Telegram | 10:30
+```
+- Agent counts (witness 🦉, refinery 🏭)
+- Mail notifications
+- Hooked work indicators
+- Clock
+
+### Line 2
+```
+🔨gthelper 🟢listen 🅿️livemd
+```
+- Compact rig names with status icons
+
+## Status Icons
+
+| Icon | Meaning |
+|------|---------|
+| 🔨 | Working (has polecats) |
+| 🟢 | Operational (witness + refinery running) |
+| 🟡 | Partial (only one agent running) |
+| 🅿️ | Parked |
+| ⚫ | Stopped |
+
+## Files
+
+| File | Purpose |
+|------|---------|
+| `tmux-rig-status-setup.sh` | One-time setup script (or run from tmux.conf) |
+| `tmux-status-right.sh` | Filters gt status-line for first line (strips rig LEDs) |
+| `tmux-rig-status.sh` | Generates second line (rig status icons) |
+| `~/.gt-mayor-name` | Mayor name config (one line, e.g. `Kael`) |
+
+## For Other Towns
+
+To set up the same status bar on another town:
 
 ```bash
-# Hide tmux window list (only one window anyway)
-[ -n "$TMUX" ] && tmux set-option window-status-current-format "" 2>/dev/null
-[ -n "$TMUX" ] && tmux set-option window-status-format "" 2>/dev/null
+# 1. Pick a mayor name
+echo "TheirName" > ~/.gt-mayor-name
+
+# 2. Copy the gthelper scripts to your rig (or use git)
+# Needed: tmux-rig-status-setup.sh, tmux-status-right.sh, tmux-rig-status.sh
+
+# 3. Run setup
+bash /path/to/tmux-rig-status-setup.sh
+
+# 4. Make persistent
+echo 'run-shell "bash /path/to/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
 ```
 
-## Result
+The script auto-detects:
+- Mayor name from `~/.gt-mayor-name`
+- Username from `whoami`
+- Town directory name from the script's location
 
-Before: `🎩 Mayor  0:claude*`
-After:  `🎩 Mayor | gastown:antik`
-
-## One-time change (non-persistent)
-
-If you just want to try it without editing bashrc:
+## Disable
 
 ```bash
-tmux set-option -t hq-mayor status-left "🎩 Mayor | $(whoami):antik "
-tmux set-option -t hq-mayor window-status-current-format ""
-tmux set-option -t hq-mayor window-status-format ""
+# Remove second line
+tmux set-option -g status 1
+
+# Restore window list
+tmux set-option -gu window-status-current-format
+tmux set-option -gu window-status-format
+
+# Restore default status-left
+tmux set-option -t hq-mayor status-left "🎩 Mayor "
+
+# Remove from tmux.conf
+# Delete the run-shell line for tmux-rig-status-setup.sh
 ```
-
-## Notes
-
-- These overrides run each time a shell starts inside tmux, re-applying after `gt mayor attach`
-- The `status-right` is left unchanged — it calls `gt status-line` which shows rig/polecat counts and is useful
-- The gold theme (`status-style`) comes from the `mad-max` theme and is left unchanged

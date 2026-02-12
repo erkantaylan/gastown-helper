@@ -14,17 +14,22 @@ echo "$line" | python3 -c "
 import sys, re
 line = sys.stdin.read().strip()
 mayor_name = '$MAYOR_NAME'
-# Replace 'Mayor' with configured name (keep the hat emoji)
-line = line.replace('🎩 Mayor', '🎩 ' + mayor_name)
+# Remove mayor tag and rig LEDs (mayor name is on status-left now)
+line = line.replace('🎩 Mayor', '')
 # Split on ' | '
 parts = [p.strip() for p in line.split(' | ') if p.strip()]
-# Keep parts that don't look like rig LEDs (contain 🟢🟡⚫🔨🅿️ followed by rig name)
+# Keep parts that don't look like rig LEDs
 rig_icons = {'🟢','🟡','⚫','🔨','🅿️','🛑'}
 filtered = []
 for p in parts:
     tokens = p.split()
     if tokens and tokens[0] in rig_icons:
-        continue  # skip rig LED entries
+        continue
     filtered.append(p)
-print(' | '.join(filtered) + (' |' if filtered else ''))
+result = ' | '.join(filtered)
+# Strip any trailing pipe (gt status-line already adds one)
+result = result.rstrip(' |').rstrip()
+if result:
+    result += ' |'
+print(result)
 "

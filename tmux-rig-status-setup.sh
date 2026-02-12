@@ -27,10 +27,21 @@ MAYOR_NAME=$(cat ~/.gt-mayor-name 2>/dev/null || echo "Mayor")
 USERNAME=$(whoami)
 TOWN_DIR=$(basename "$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)")
 
+# Detect bot version from deployed binary
+TOWN_ROOT="$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)"
+BOT_BIN="$TOWN_ROOT/services/telegram-bot/gt-bot"
+BOT_VERSION=$("$BOT_BIN" --version 2>/dev/null || echo "")
+BOT_BADGE=""
+if [ -n "$BOT_VERSION" ]; then
+    BOT_BADGE="#[fg=colour236,bg=colour238,none] #[fg=colour250,bg=colour238] 📱${BOT_VERSION} #[fg=colour238,bg=default,none]"
+fi
+
 # Apply to mayor session
 if tmux has-session -t hq-mayor 2>/dev/null; then
-  # Left: mayor name (bold yellow bg) + user[town]
-  tmux set-option -t hq-mayor status-left "#[fg=colour232,bg=colour220,bold] 🎩 $MAYOR_NAME #[fg=colour220,bg=colour236,none] #[fg=colour245,bg=colour236] ${USERNAME}[${TOWN_DIR}] #[fg=colour236,bg=default,none] "
+  # Ensure status-left is long enough for mayor name + user[town] + bot badge
+  tmux set-option -t hq-mayor status-left-length 60
+  # Left: mayor name (bold yellow bg) + user[town] + bot badge
+  tmux set-option -t hq-mayor status-left "#[fg=colour232,bg=colour220,bold] 🎩 $MAYOR_NAME #[fg=colour220,bg=colour24,none] #[fg=colour255,bg=colour24,bold] ${USERNAME}[${TOWN_DIR}] ${BOT_BADGE} "
   # Right: filtered gt status (no rig LEDs) + time
   tmux set-option -t hq-mayor status-right "#($FILTER_SCRIPT hq-mayor) %H:%M"
 fi
@@ -41,7 +52,7 @@ tmux set-option -g window-status-format ""
 
 echo "✓ Second status line enabled"
 echo "  Mayor: $MAYOR_NAME (from ~/.gt-mayor-name)"
-echo "  User: ${USERNAME}[${TOWN_DIR}]"
+echo "  User: ${USERNAME}[${TOWN_DIR}]${BOT_BADGE}"
 echo "  Line 1: agent counts, hooked work, mail (no rig LEDs, no window list)"
 echo "  Line 2: rig names with status icons"
 echo "  Refresh: every $(tmux show-option -gv status-interval 2>/dev/null || echo 5)s"

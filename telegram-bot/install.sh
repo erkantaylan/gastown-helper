@@ -16,20 +16,29 @@ echo "==> Town name: $TOWN_NAME"
 echo "==> Service dir: $SERVICE_DIR"
 echo "==> Service name: $SERVICE_NAME"
 
-# 1. Build
+# 1. Stop existing service if running
+if systemctl is-active --quiet "$SERVICE_NAME" 2>/dev/null; then
+    echo "==> Stopping $SERVICE_NAME..."
+    sudo systemctl stop "$SERVICE_NAME"
+    echo "    Stopped."
+else
+    echo "==> Service not running, skipping stop."
+fi
+
+# 2. Build
 echo "==> Building gt-bot..."
 cd "$SCRIPT_DIR"
 go build -o gt-bot .
 echo "    Built: $SCRIPT_DIR/gt-bot"
 
-# 2. Create service directory
+# 3. Create service directory
 mkdir -p "$SERVICE_DIR"
 
-# 3. Copy binary
+# 4. Copy binary
 cp gt-bot "$SERVICE_DIR/gt-bot"
 echo "    Installed: $SERVICE_DIR/gt-bot"
 
-# 4. Copy .env from .env.example if no .env exists
+# 5. Copy .env from .env.example if no .env exists
 if [ ! -f "$SERVICE_DIR/.env" ]; then
     if [ -f "$SCRIPT_DIR/.env.example" ]; then
         cp "$SCRIPT_DIR/.env.example" "$SERVICE_DIR/.env"
@@ -41,7 +50,7 @@ else
     echo "    .env already exists, skipping"
 fi
 
-# 5. Detect paths for gt and bd (needed in systemd PATH since it won't have user's shell PATH)
+# 6. Detect paths for gt and bd (needed in systemd PATH since it won't have user's shell PATH)
 GT_PATH="$(dirname "$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)")"
 BD_PATH="$(dirname "$(command -v bd 2>/dev/null || echo /usr/local/bin/bd)")"
 EXTRA_PATHS=""
@@ -55,7 +64,7 @@ SVC_PATH="${EXTRA_PATHS}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap
 SVC_USER="$(whoami)"
 SVC_HOME="$HOME"
 
-# 6. Generate systemd service file (town-specific name to avoid conflicts)
+# 7. Generate systemd service file (town-specific name to avoid conflicts)
 # - User/HOME: runs as the installing user, not root (root would corrupt sqlite WAL ownership)
 # - PATH: includes gt and bd directories (systemd doesn't inherit user shell PATH)
 cat > "$SERVICE_DIR/${SERVICE_NAME}.service" <<EOF
@@ -79,13 +88,18 @@ WantedBy=default.target
 EOF
 echo "    Generated: $SERVICE_DIR/${SERVICE_NAME}.service"
 
+# 8. Install and start service
+echo "==> Installing service..."
+sudo cp "$SERVICE_DIR/${SERVICE_NAME}.service" "/etc/systemd/system/${SERVICE_NAME}.service"
+sudo systemctl daemon-reload
+sudo systemctl enable --now "$SERVICE_NAME"
+echo "    Service installed and started."
+
+# 9. Print deployed version
+DEPLOYED_VERSION=$("$SERVICE_DIR/gt-bot" --version 2>/dev/null || echo "unknown")
 echo ""
-echo "==> Install complete!"
-echo ""
-echo "To activate the service:"
-echo "  sudo cp $SERVICE_DIR/${SERVICE_NAME}.service /etc/systemd/system/${SERVICE_NAME}.service"
-echo "  sudo systemctl daemon-reload"
-echo "  sudo systemctl enable --now $SERVICE_NAME"
+echo "==> Deploy complete! Bot $DEPLOYED_VERSION running as $SERVICE_NAME"
 echo ""
 echo "To check status:"
 echo "  systemctl status $SERVICE_NAME"
+echo "  journalctl -u $SERVICE_NAME -f"

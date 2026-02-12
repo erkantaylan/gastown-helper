@@ -18,6 +18,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const BotVersion = "v1"
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -368,6 +370,11 @@ func pollMail(bot *tgbotapi.BotAPI, cfg Config) {
 // ---------------------------------------------------------------------------
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "--version" {
+		fmt.Println(BotVersion)
+		os.Exit(0)
+	}
+
 	cfg := loadConfig()
 
 	if cfg.BotToken == "" {
@@ -381,7 +388,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create bot: %v", err)
 	}
-	log.Printf("Authorized as @%s (allowed chats: %v)", bot.Self.UserName, cfg.ChatIDs)
+	log.Printf("Gas Town Bot %s — Authorized as @%s (allowed chats: %v)", BotVersion, bot.Self.UserName, cfg.ChatIDs)
 
 	// Start mail poller
 	if cfg.PollInterval > 0 {
@@ -453,18 +460,23 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 				"🏭 Gas Town Bot ready.\n\nYour chat ID: `%d`\n\nUse /help to see commands.", chatID))
 
 		case "help":
-			sendMsg(bot, chatID, "*Gas Town Bot*\n\n"+
+			sendMsg(bot, chatID, fmt.Sprintf("*Gas Town Bot %s*\n\n"+
 				"*Commands:*\n"+
 				"  /status — Town overview\n"+
-				"  /version — Gas Town version\n"+
+				"  /version — Gas Town + bot version\n"+
 				"  /nudge — Wake the mayor\n"+
 				"  /crew `<name> <msg>` — Talk to a crew member\n"+
 				"  /help — This message\n\n"+
+				"*Mayor Power:*\n"+
+				"  /mayor\\_status — Is the mayor running?\n"+
+				"  /mayor\\_start — Start mayor agent\n"+
+				"  /mayor\\_stop — Stop mayor agent\n"+
+				"  /mayor\\_restart — Restart mayor agent\n\n"+
 				"*Talk to mayor:*\n"+
 				"Just type a message — it sends to the mayor and nudges.\n\n"+
 				"_Examples:_\n"+
 				"  `Merge all abp feature branches`\n"+
-				"  /crew bender merge all open PRs")
+				"  /crew bender merge all open PRs", BotVersion))
 
 		case "status":
 			mid := sendLoading(bot, chatID, "⏳ Fetching status…")
@@ -473,7 +485,34 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 
 		case "version":
 			raw := gt(cfg, "version")
-			sendMsg(bot, chatID, fmt.Sprintf("`%s`", raw))
+			sendMsg(bot, chatID, fmt.Sprintf("Gas Town: `%s`\nBot: `%s`", raw, BotVersion))
+
+		case "bot_version":
+			sendMsg(bot, chatID, fmt.Sprintf("📱 Bot %s", BotVersion))
+
+		case "mayor_status":
+			mid := sendLoading(bot, chatID, "⏳ Checking mayor…")
+			raw := gt(cfg, "mayor", "status")
+			sendEdit(bot, chatID, mid, fmt.Sprintf("👑 Mayor status:\n%s", mono(raw)))
+
+		case "mayor_start":
+			mid := sendLoading(bot, chatID, "▶️ Starting mayor…")
+			raw := gt(cfg, "mayor", "start")
+			if strings.Contains(raw, "already running") {
+				sendEdit(bot, chatID, mid, "👑 Mayor is already running.")
+			} else {
+				sendEdit(bot, chatID, mid, fmt.Sprintf("👑 Mayor started.\n%s", mono(raw)))
+			}
+
+		case "mayor_stop":
+			mid := sendLoading(bot, chatID, "⏹️ Stopping mayor…")
+			raw := gt(cfg, "mayor", "stop")
+			sendEdit(bot, chatID, mid, fmt.Sprintf("👑 Mayor stopped.\n%s", mono(raw)))
+
+		case "mayor_restart":
+			mid := sendLoading(bot, chatID, "🔄 Restarting mayor…")
+			raw := gt(cfg, "mayor", "restart")
+			sendEdit(bot, chatID, mid, fmt.Sprintf("👑 Mayor restarted.\n%s", mono(raw)))
 
 		case "mayor":
 			text := msg.CommandArguments()
