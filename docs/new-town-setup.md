@@ -12,11 +12,12 @@ Two-line status bar with a clean split:
 
 The setup script does these things:
 1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
-2. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] on **grey background** (colour236)
-3. **Styles line 1 right**: uses `tmux-status-right.sh` to filter `gt status-line` — **strips rig LEDs** so they don't duplicate with line 2
-4. **Adds line 2** with dark background (colour232) showing compact rig status icons via `tmux-rig-status.sh`
-5. **Hides window list** (redundant with single window setup)
-6. **Fixes fill color** on both lines (prevents brown background on some terminals)
+2. **Sets explicit text colors** — `fg=colour245` (light grey) on `bg=colour232` (dark) for all status elements. Without this, text color inherits the terminal default (yellow in Terminator, different grey in GNOME Terminal, etc.)
+3. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] on **grey background** (colour236)
+4. **Styles line 1 right**: uses `tmux-status-right.sh` to filter `gt status-line` — **strips rig LEDs** so they don't duplicate with line 2
+5. **Adds line 2** with dark background (colour232) showing compact rig status icons via `tmux-rig-status.sh`
+6. **Hides window list** (redundant with single window setup)
+7. **Fixes fill color** on both lines (prevents brown background on some terminals)
 
 Without the setup script you'll see the default `🎩 Mayor` with no bold/colors, rig LEDs duplicated on both lines.
 

@@ -11,14 +11,27 @@ FILTER_SCRIPT="$SCRIPT_DIR/tmux-status-right.sh"
 # Enable 2 status lines
 tmux set-option -g status 2
 
+# Explicitly set text and background colors for all status bar elements
+# Without these, text color inherits terminal default (yellow in Terminator, grey in GNOME Terminal, etc.)
+tmux set-option -g status-style "fg=colour245,bg=colour232,none"
+tmux set-option -g status-left-style "fg=colour245,bg=colour232,none"
+tmux set-option -g status-right-style "fg=colour245,bg=colour232,none"
+
 # Fix fill color for both lines (prevents brown background on some terminals)
 tmux set-option -g 'status-format[0]' "#[fill=colour232]$(tmux show-option -gv 'status-format[0]')"
 tmux set-option -g 'status-format[1]' \
   "#[fill=colour232,align=left,bg=colour232,fg=colour245]#($STATUS_SCRIPT)"
 
-# Remove rig LEDs from first line (rigs shown on second line instead)
-# Apply to mayor session — adjust session name if needed
+# Mayor name, username, and town directory
+MAYOR_NAME=$(cat ~/.gt-mayor-name 2>/dev/null || echo "Mayor")
+USERNAME=$(whoami)
+TOWN_DIR=$(basename "$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)")
+
+# Apply to mayor session
 if tmux has-session -t hq-mayor 2>/dev/null; then
+  # Left: mayor name (bold yellow bg) + user[town]
+  tmux set-option -t hq-mayor status-left "#[fg=colour232,bg=colour220,bold] 🎩 $MAYOR_NAME #[fg=colour220,bg=colour236,none] #[fg=colour245,bg=colour236] ${USERNAME}[${TOWN_DIR}] #[fg=colour236,bg=default,none] "
+  # Right: filtered gt status (no rig LEDs) + time
   tmux set-option -t hq-mayor status-right "#($FILTER_SCRIPT hq-mayor) %H:%M"
 fi
 
@@ -26,13 +39,9 @@ fi
 tmux set-option -g window-status-current-format ""
 tmux set-option -g window-status-format ""
 
-MAYOR_NAME=$(cat ~/.gt-mayor-name 2>/dev/null || echo "")
 echo "✓ Second status line enabled"
-if [ -n "$MAYOR_NAME" ]; then
-  echo "  Mayor: $MAYOR_NAME (from ~/.gt-mayor-name)"
-else
-  echo "  Tip: echo 'YourName' > ~/.gt-mayor-name to show your name on the status bar"
-fi
+echo "  Mayor: $MAYOR_NAME (from ~/.gt-mayor-name)"
+echo "  User: ${USERNAME}[${TOWN_DIR}]"
 echo "  Line 1: agent counts, hooked work, mail (no rig LEDs, no window list)"
 echo "  Line 2: rig names with status icons"
 echo "  Refresh: every $(tmux show-option -gv status-interval 2>/dev/null || echo 5)s"
