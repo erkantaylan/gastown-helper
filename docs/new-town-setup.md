@@ -4,7 +4,16 @@ Instructions for setting up the tmux status bar and telegram bot on a new Gas To
 
 ## 1. Tmux Status Bar
 
-Two-line status bar: mayor name + agent counts + mail on line 1, rig status icons on line 2.
+Two-line status bar with a clean split:
+- **Line 1**: your mayor name (left) + agent counts, mail, hooked work (right) — **no rig LEDs**
+- **Line 2**: rig names with status icons — rigs only appear here
+
+The setup script does 3 important things:
+1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
+2. **Strips rig LEDs from line 1** so they don't duplicate with line 2
+3. **Adds line 2** with compact rig status icons
+
+Without the setup script you'll see the default `🎩 Mayor` with rig LEDs on both lines.
 
 ### Prerequisites
 
@@ -15,7 +24,8 @@ Two-line status bar: mayor name + agent counts + mail on line 1, rig status icon
 ### Setup
 
 ```bash
-# Pick your mayor name
+# IMPORTANT: Pick your mayor name first!
+# This replaces the default "🎩 Mayor" in the status bar
 echo "YourName" > ~/.gt-mayor-name
 
 # Run setup from your gthelper rig directory
@@ -26,11 +36,24 @@ bash tmux-rig-status-setup.sh
 echo 'run-shell "bash <your-town>/gthelper/refinery/rig/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
 ```
 
-### What You Get
+### Before vs After
 
-**Line 1 (left):** `🎩 YourName  user[town-dir]`
-**Line 1 (right):** agent counts, mail notifications, hooked work, clock
-**Line 2:** `🔨rigA 🟢rigB ⚫rigC`
+**Before** (default gt status bar):
+```
+🎩 Mayor                    0/2 🦉 2/2 🏭 | 🟢 scs | ⚫ abp ⚫ gthelper | 12:20
+```
+
+**After** (with setup script):
+```
+🎩 Kael  kamyon[gt-01]       0/2 🦉 2/2 🏭 | 📬 | 12:20
+⚫abp 🟢scs ⚫gthelper
+```
+
+Key differences:
+- Mayor name instead of generic "Mayor"
+- Username and town shown on the left
+- Rig LEDs removed from line 1 (no duplication)
+- Rigs shown compactly on line 2
 
 ### Status Icons
 
@@ -43,10 +66,10 @@ echo 'run-shell "bash <your-town>/gthelper/refinery/rig/tmux-rig-status-setup.sh
 
 ### Files Involved
 
-All in `gthelper/refinery/rig/`:
+All 3 scripts must be in `gthelper/refinery/rig/`:
 
-- `tmux-rig-status-setup.sh` — one-time setup (or run from tmux.conf)
-- `tmux-status-right.sh` — filters gt status-line for line 1 (strips rig LEDs)
+- `tmux-rig-status-setup.sh` — one-time setup (or run from tmux.conf), configures both lines
+- `tmux-status-right.sh` — filters `gt status-line` for line 1 (**strips rig LEDs** so they don't duplicate)
 - `tmux-rig-status.sh` — generates line 2 (rig names with icons)
 
 ---
