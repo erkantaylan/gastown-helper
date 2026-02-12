@@ -52,9 +52,12 @@ for p in "$GT_PATH" "$BD_PATH"; do
     esac
 done
 SVC_PATH="${EXTRA_PATHS}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
+SVC_USER="$(whoami)"
+SVC_HOME="$HOME"
 
 # 6. Generate systemd service file (town-specific name to avoid conflicts)
-# Includes PATH with gt and bd directories — systemd doesn't inherit user shell PATH
+# - User/HOME: runs as the installing user, not root (root would corrupt sqlite WAL ownership)
+# - PATH: includes gt and bd directories (systemd doesn't inherit user shell PATH)
 cat > "$SERVICE_DIR/${SERVICE_NAME}.service" <<EOF
 [Unit]
 Description=Gas Town Telegram Bot ($TOWN_NAME)
@@ -62,10 +65,12 @@ After=network.target
 
 [Service]
 Type=simple
+User=$SVC_USER
 ExecStart=$SERVICE_DIR/gt-bot
 WorkingDirectory=$TOWN_ROOT
 EnvironmentFile=$SERVICE_DIR/.env
 Environment=PATH=$SVC_PATH
+Environment=HOME=$SVC_HOME
 Restart=on-failure
 RestartSec=10
 
