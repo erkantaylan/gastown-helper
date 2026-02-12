@@ -41,7 +41,20 @@ else
     echo "    .env already exists, skipping"
 fi
 
-# 5. Generate systemd service file (town-specific name to avoid conflicts)
+# 5. Detect paths for gt and bd (needed in systemd PATH since it won't have user's shell PATH)
+GT_PATH="$(dirname "$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)")"
+BD_PATH="$(dirname "$(command -v bd 2>/dev/null || echo /usr/local/bin/bd)")"
+EXTRA_PATHS=""
+for p in "$GT_PATH" "$BD_PATH"; do
+    case ":$EXTRA_PATHS:" in
+        *":$p:"*) ;;  # already included
+        *) EXTRA_PATHS="${EXTRA_PATHS:+$EXTRA_PATHS:}$p" ;;
+    esac
+done
+SVC_PATH="${EXTRA_PATHS}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
+
+# 6. Generate systemd service file (town-specific name to avoid conflicts)
+# Includes PATH with gt and bd directories — systemd doesn't inherit user shell PATH
 cat > "$SERVICE_DIR/${SERVICE_NAME}.service" <<EOF
 [Unit]
 Description=Gas Town Telegram Bot ($TOWN_NAME)
@@ -52,6 +65,7 @@ Type=simple
 ExecStart=$SERVICE_DIR/gt-bot
 WorkingDirectory=$TOWN_ROOT
 EnvironmentFile=$SERVICE_DIR/.env
+Environment=PATH=$SVC_PATH
 Restart=on-failure
 RestartSec=10
 
