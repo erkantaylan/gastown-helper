@@ -50,9 +50,14 @@ else
     echo "    .env already exists, skipping"
 fi
 
-# 6. Detect paths for gt and bd (needed in systemd PATH since it won't have user's shell PATH)
-GT_PATH="$(dirname "$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)")"
-BD_PATH="$(dirname "$(command -v bd 2>/dev/null || echo /usr/local/bin/bd)")"
+# 6. Detect the real user (not root when run via sudo)
+SVC_USER="${SUDO_USER:-$(whoami)}"
+SVC_HOME=$(eval echo "~$SVC_USER")
+
+# Detect paths for gt and bd using the real user's environment
+# (sudo changes PATH, so resolve from the real user's shell)
+GT_PATH="$(sudo -u "$SVC_USER" bash -lc 'dirname "$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)"' 2>/dev/null)"
+BD_PATH="$(sudo -u "$SVC_USER" bash -lc 'dirname "$(command -v bd 2>/dev/null || echo /usr/local/bin/bd)"' 2>/dev/null)"
 EXTRA_PATHS=""
 for p in "$GT_PATH" "$BD_PATH"; do
     case ":$EXTRA_PATHS:" in
@@ -61,8 +66,6 @@ for p in "$GT_PATH" "$BD_PATH"; do
     esac
 done
 SVC_PATH="${EXTRA_PATHS}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
-SVC_USER="$(whoami)"
-SVC_HOME="$HOME"
 
 # 7. Generate systemd service file (town-specific name to avoid conflicts)
 # - User/HOME: runs as the installing user, not root (root would corrupt sqlite WAL ownership)
