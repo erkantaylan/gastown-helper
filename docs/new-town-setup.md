@@ -4,22 +4,10 @@ Instructions for setting up the tmux status bar and telegram bot on a new Gas To
 
 ## 1. Tmux Status Bar
 
-Two-line status bar with a clean split:
-- **Line 1**: your mayor name (left) + agent counts, mail, hooked work (right) — **no rig LEDs**
-- **Line 2**: rig names with status icons — rigs only appear here
-
-**IMPORTANT: Do NOT reimplement this manually. Run the actual `tmux-rig-status-setup.sh` script.** It handles everything including styling that's easy to miss.
-
-The setup script does these things:
-1. **Picks up your mayor name** from `~/.gt-mayor-name` (replaces the default "🎩 Mayor")
-2. **Sets explicit text colors** — `fg=colour245` (light grey) on `bg=colour232` (dark) for all status elements. Without this, text color inherits the terminal default (yellow in Terminator, different grey in GNOME Terminal, etc.)
-3. **Styles line 1 left**: mayor name in **bold on yellow background** (colour220), username[town] in **bold white on blue background** (colour24), bot version badge on dark grey (colour238)
-4. **Styles line 1 right**: uses `tmux-status-right.sh` to filter `gt status-line` — **strips rig LEDs** so they don't duplicate with line 2
-5. **Adds line 2** with dark background (colour232) showing compact rig status icons via `tmux-rig-status.sh`
-6. **Hides window list** (redundant with single window setup)
-7. **Fixes fill color** on both lines (prevents brown background on some terminals)
-
-Without the setup script you'll see the default `🎩 Mayor` with no bold/colors, rig LEDs duplicated on both lines.
+Two-line status bar configured directly in `~/.config/tmux/tmux.conf` (no oh-my-tmux or other frameworks needed):
+- **Line 1 left**: mayor name + user + town + bot badge
+- **Line 1 right**: agent counts, mail, hooked work (no rig LEDs) + time
+- **Line 2**: rig names with status icons
 
 ### Prerequisites
 
@@ -30,38 +18,41 @@ Without the setup script you'll see the default `🎩 Mayor` with no bold/colors
 ### Setup
 
 ```bash
-# IMPORTANT: Pick your mayor name first!
-# This replaces the default "🎩 Mayor" in the status bar
+# 1. Pick your mayor name
 echo "YourName" > ~/.gt-mayor-name
 
-# Run setup from your gthelper rig directory
-cd <your-town>/gthelper/refinery/rig/
-bash tmux-rig-status-setup.sh
+# 2. Cache your bot's Telegram username (one-time, after bot is deployed)
+echo "your_bot_username" > ~/.gt-bot-name
 
-# Make persistent — add to tmux.conf
-echo 'run-shell "bash <your-town>/gthelper/refinery/rig/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
+# 3. Install the tmux config
+cp <your-town>/gthelper/refinery/rig/tmux.conf ~/.config/tmux/tmux.conf
+
+# 4. Edit the config to update paths for your town directory
+#    - Replace gt-01 with your town dir name
+#    - Replace hardcoded paths to match your town location
+vim ~/.config/tmux/tmux.conf
+
+# 5. Reload
+tmux source-file ~/.config/tmux/tmux.conf
 ```
 
-### Before vs After
+### Layout
 
-**Before** (default gt status bar):
 ```
-🎩 Mayor                    0/2 🦉 2/2 🏭 | 🟢 scs | ⚫ abp ⚫ gthelper | 12:20
-```
-
-**After** (with setup script):
-```
-🎩 Kael  kamyon[gt-01] 📱v1       0/2 🦉 2/2 🏭 | 📬 | 12:20
+🎩 Kael  👤kamyon 📁gt-01  📱v1 @gastown_mine_bot     📬 2 | 12:20 13 Feb
 ⚫abp 🟢scs ⚫gthelper
 ```
 
-Key differences:
-- Mayor name in **bold on yellow background** instead of generic "Mayor"
-- Username and town in **bold white on blue background** on the left
-- Bot version badge (`📱v1`) on dark grey background
-- Rig LEDs removed from line 1 (no duplication)
-- Rigs shown compactly on dark background on line 2
-- Window list hidden
+Line 1 left segments (with powerline arrows):
+- **Yellow bg**: 🎩 mayor name (from `~/.gt-mayor-name`)
+- **Blue bg**: 👤user 📁town
+- **Dark grey bg**: 📱bot version + @bot username (from `~/.gt-bot-name`)
+
+Line 1 right:
+- Filtered gt status (no rig LEDs) + time/date
+
+Line 2:
+- Rig names with status icons on dark background
 
 ### Status Icons
 
@@ -74,11 +65,11 @@ Key differences:
 
 ### Files Involved
 
-All 3 scripts must be in `gthelper/refinery/rig/`:
-
-- `tmux-rig-status-setup.sh` — one-time setup (or run from tmux.conf), configures both lines
-- `tmux-status-right.sh` — filters `gt status-line` for line 1 (**strips rig LEDs** so they don't duplicate)
-- `tmux-rig-status.sh` — generates line 2 (rig names with icons)
+- `~/.config/tmux/tmux.conf` — the actual tmux config (persistent, survives reloads)
+- `~/.gt-mayor-name` — mayor display name
+- `~/.gt-bot-name` — cached Telegram bot username
+- `gthelper/refinery/rig/tmux-status-right.sh` — filters `gt status-line` for line 1 (strips rig LEDs)
+- `gthelper/refinery/rig/tmux-rig-status.sh` — generates line 2 (rig names with icons)
 
 ---
 
@@ -214,4 +205,4 @@ The version is shown in:
 - `/version` command: shows both Gas Town and bot versions
 - `/bot_version` command: bot version only
 - `/help` header: `Gas Town Bot v1`
-- tmux status bar: `📱v1` badge on dark grey background after `username[town]`
+- tmux status bar: `📱v1 @botname` badge on dark grey background
