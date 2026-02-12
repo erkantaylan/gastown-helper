@@ -22,10 +22,11 @@ bash install.sh
 # Edit the generated .env:
 vim <town>/services/telegram-bot/.env
 
-# Install and start the systemd service:
-sudo cp <town>/services/telegram-bot/gt-bot.service /etc/systemd/system/gt-bot.service
+# Install and start the systemd service (name includes town dir to avoid conflicts):
+# install.sh prints the exact commands — the pattern is:
+sudo cp <town>/services/telegram-bot/gt-bot-<town-dir>.service /etc/systemd/system/gt-bot-<town-dir>.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now gt-bot
+sudo systemctl enable --now gt-bot-<town-dir>
 ```
 
 ## Migrate From Old Setup

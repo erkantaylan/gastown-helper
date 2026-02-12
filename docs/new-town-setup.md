@@ -107,6 +107,8 @@ bash install.sh
 
 This builds the binary and copies it to `<your-town>/services/telegram-bot/`.
 
+The install script auto-detects the town directory name and creates a **town-specific** service file: `gt-bot-<town-dir>.service`. This prevents conflicts when multiple towns run on the same machine.
+
 #### Configure
 
 ```bash
@@ -127,16 +129,21 @@ STATE_FILE=<your-town>/services/telegram-bot/state.json
 
 #### Enable the service
 
+The service name includes your town directory name (e.g. `gt-bot-antik` for a town at `/home/gastown/antik`):
+
 ```bash
-sudo cp <your-town>/services/telegram-bot/gt-bot.service /etc/systemd/system/gt-bot.service
+# install.sh prints the exact commands, but the pattern is:
+sudo cp <your-town>/services/telegram-bot/gt-bot-<town-dir>.service /etc/systemd/system/gt-bot-<town-dir>.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now gt-bot
+sudo systemctl enable --now gt-bot-<town-dir>
 ```
+
+**IMPORTANT**: Do NOT use a generic name like `gt-bot.service` — if multiple towns share a machine, they'll overwrite each other's service.
 
 #### Verify
 
 ```bash
-systemctl status gt-bot
+systemctl status gt-bot-<town-dir>
 ```
 
 Then send `/status` from Telegram — the bot should respond with your town overview.
