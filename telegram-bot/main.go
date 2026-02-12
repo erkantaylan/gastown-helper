@@ -311,8 +311,12 @@ func pollMail(bot *tgbotapi.BotAPI, cfg Config) {
 			continue
 		}
 		if !boolean(m, "read") {
-			unread = append(unread, m)
 			unreadIDs[str(m, "id")] = true
+			// Skip messages sent from Telegram (user already got confirmation)
+			if str(m, "subject") == "📱 Telegram" {
+				continue
+			}
+			unread = append(unread, m)
 		}
 	}
 
@@ -511,6 +515,7 @@ func handleMessage(bot *tgbotapi.BotAPI, cfg Config, msg *tgbotapi.Message) {
 func mailMayor(bot *tgbotapi.BotAPI, cfg Config, chatID int64, text string) {
 	mid := sendLoading(bot, chatID, "📨 Sending to mayor…")
 	gt(cfg, "mail", "send", "mayor/", "-s", "📱 Telegram", "-m", text)
+	gt(cfg, "nudge", "mayor", "📱 Telegram: "+text)
 	sendEdit(bot, chatID, mid, fmt.Sprintf("✅ Sent to mayor:\n_%s_", text))
 }
 
