@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -78,12 +79,18 @@ func envOr(key, fallback string) string {
 // ---------------------------------------------------------------------------
 
 func runCmd(cfg Config, args []string) string {
-	cmd := exec.Command(args[0], args[1:]...)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, args[0], args[1:]...)
 	cmd.Dir = cfg.TownRoot
 	cmd.Env = append(os.Environ(), "NO_COLOR=1")
 
 	out, err := cmd.CombinedOutput()
 	result := strings.TrimSpace(string(out))
+	if ctx.Err() == context.DeadlineExceeded {
+		return "Error: command timed out"
+	}
 	if err != nil && result == "" {
 		return fmt.Sprintf("Error: %v", err)
 	}
@@ -374,8 +381,9 @@ func main() {
 
 	// Start mail poller
 	if cfg.PollInterval > 0 {
-		ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 		go func() {
+			pollMail(bot, cfg)
+			ticker := time.NewTicker(time.Duration(cfg.PollInterval) * time.Second)
 			for range ticker.C {
 				pollMail(bot, cfg)
 			}
