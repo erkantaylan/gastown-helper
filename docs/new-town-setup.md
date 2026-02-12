@@ -123,9 +123,13 @@ TELEGRAM_CHAT_ID=<your chat ID>
 GT_TOWN_ROOT=<absolute path to your town>
 GT_BIN=<path to gt binary>
 BD_BIN=<path to bd binary>
-POLL_INTERVAL=120
+GT_ROLE=mayor
+BD_ACTOR=mayor
+POLL_INTERVAL=10
 STATE_FILE=<your-town>/services/telegram-bot/state.json
 ```
+
+**CRITICAL**: `GT_ROLE=mayor` and `BD_ACTOR=mayor` are required. Without them, `gt mail inbox` returns `null` under systemd because it doesn't know which identity's inbox to check.
 
 #### Enable the service
 
@@ -157,7 +161,24 @@ Then send `/status` from Telegram — the bot should respond with your town over
 | `/nudge` | Wake the mayor |
 | `/crew <name> <msg>` | Talk to a crew member |
 | `/help` | List commands |
-| _(plain text)_ | Sends message to mayor |
+| _(plain text)_ | Sends message to mayor and nudges |
+
+### How Telegram Communication Works
+
+**User → Mayor (Telegram to terminal):**
+1. User sends `/mayor <msg>` or plain text on Telegram
+2. Bot sends mail to mayor's inbox (`gt mail send mayor/`)
+3. Bot nudges the mayor (`gt nudge mayor`) — mayor session wakes up
+4. Nudge shows: `[From 📱 Telegram] <message text>`
+5. Mayor reads the mail and acts on it
+
+**Mayor → User (terminal to Telegram):**
+1. Mayor sends mail: `gt mail send mayor/ -s "Your reply here" -m "reply"`
+2. Bot's poller detects the new unread message
+3. Telegram notification shows the **subject** as the message text
+4. Subject must NOT be exactly "📱 Telegram" (those are filtered — they're self-sent from the bot)
+
+**Important for mayors:** When the user writes from Telegram, always reply via mail so they see the response on Telegram. They are not looking at the terminal. Put the reply content in the **subject** field — that's what shows in the Telegram notification.
 
 ### Updating the Bot
 
@@ -166,5 +187,5 @@ After source code changes in gthelper:
 ```bash
 cd <your-town>/gthelper/refinery/rig/telegram-bot/
 bash install.sh
-sudo systemctl restart gt-bot
+sudo systemctl restart gt-bot-<town-dir>
 ```
