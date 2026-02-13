@@ -50,6 +50,25 @@ else
     echo "    .env already exists, skipping"
 fi
 
+# 5b. Install gt-telegram CLI helper
+if [ -f "$SCRIPT_DIR/gt-telegram" ]; then
+    cp "$SCRIPT_DIR/gt-telegram" "$SERVICE_DIR/gt-telegram"
+    chmod +x "$SERVICE_DIR/gt-telegram"
+    # Symlink into user's PATH
+    LOCAL_BIN="$SVC_HOME/.local/bin"
+    mkdir -p "$LOCAL_BIN"
+    ln -sf "$SERVICE_DIR/gt-telegram" "$LOCAL_BIN/gt-telegram"
+    echo "    Installed: gt-telegram -> $LOCAL_BIN/gt-telegram"
+fi
+
+# 5c. Clean up stale service files from older installs
+for stale in "$SERVICE_DIR/gt-bot.service"; do
+    if [ -f "$stale" ]; then
+        rm -f "$stale"
+        echo "    Removed stale: $(basename "$stale")"
+    fi
+done
+
 # 6. Detect the real user (not root when run via sudo)
 SVC_USER="${SUDO_USER:-$(whoami)}"
 SVC_HOME=$(eval echo "~$SVC_USER")
