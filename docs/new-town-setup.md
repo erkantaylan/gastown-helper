@@ -39,13 +39,13 @@ tmux source-file ~/.config/tmux/tmux.conf
 ### Layout
 
 ```
-🎩 Kael  👤kamyon 📁gt-01  📱v1 @gastown_mine_bot     📬 2 | 12:20 13 Feb
+🎩 Kael  👶kamyon 📁gt-01  📱v1 @gastown_mine_bot     📬 2 | 12:20 13 Feb
 ⚫abp 🟢scs ⚫gthelper
 ```
 
 Line 1 left segments (with powerline arrows):
 - **Yellow bg**: 🎩 mayor name (from `~/.gt-mayor-name`)
-- **Blue bg**: 👤user 📁town
+- **Blue bg**: 👶user 📁town
 - **Dark grey bg**: 📱bot version + @bot username (from `~/.gt-bot-name`)
 
 Line 1 right:
