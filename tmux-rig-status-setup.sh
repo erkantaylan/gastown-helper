@@ -45,7 +45,7 @@ if tmux has-session -t hq-mayor 2>/dev/null; then
   # Ensure status-left is long enough for mayor name + user[town] + bot badge
   tmux set-option -t hq-mayor status-left-length 80
   # Left: mayor name (bold yellow bg) + user[town] + bot badge
-  tmux set-option -t hq-mayor status-left "#[fg=colour232,bg=colour220,bold] 🎩 $MAYOR_NAME #[fg=colour220,bg=colour24,none] #[fg=colour255,bg=colour24,bold] 👤${USERNAME} 📁${TOWN_DIR} ${BOT_BADGE} "
+  tmux set-option -t hq-mayor status-left "#[fg=colour232,bg=colour220,bold] 🎩 $MAYOR_NAME #[fg=colour220,bg=colour24,none]#[fg=colour255,bg=colour24,bold]🧖${USERNAME} 📁${TOWN_DIR}${BOT_BADGE}"
   # Right: filtered gt status (no rig LEDs) + time
   tmux set-option -t hq-mayor status-right "#($FILTER_SCRIPT hq-mayor) %H:%M"
 fi
