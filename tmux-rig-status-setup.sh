@@ -37,7 +37,7 @@ BOT_BADGE=""
 if [ -n "$BOT_VERSION" ]; then
     BOT_LABEL="📱${BOT_VERSION}"
     [ -n "$BOT_NAME" ] && BOT_LABEL="📱${BOT_VERSION} @${BOT_NAME}"
-    BOT_BADGE="#[fg=colour236,bg=colour238,none] #[fg=colour250,bg=colour238] ${BOT_LABEL} #[fg=colour238,bg=default,none]"
+    BOT_BADGE="#[fg=colour236,bg=colour238,none]#[fg=colour250,bg=colour238]${BOT_LABEL}#[fg=colour238,bg=default,none]"
 fi
 
 # Apply to mayor session
