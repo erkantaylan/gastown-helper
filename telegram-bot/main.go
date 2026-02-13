@@ -18,7 +18,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const BotVersion = "v1"
+const BotVersion = "v2"
 
 // ---------------------------------------------------------------------------
 // Config
