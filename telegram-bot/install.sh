@@ -50,18 +50,7 @@ else
     echo "    .env already exists, skipping"
 fi
 
-# 5b. Install gt-telegram CLI helper
-if [ -f "$SCRIPT_DIR/gt-telegram" ]; then
-    cp "$SCRIPT_DIR/gt-telegram" "$SERVICE_DIR/gt-telegram"
-    chmod +x "$SERVICE_DIR/gt-telegram"
-    # Symlink into user's PATH
-    LOCAL_BIN="$SVC_HOME/.local/bin"
-    mkdir -p "$LOCAL_BIN"
-    ln -sf "$SERVICE_DIR/gt-telegram" "$LOCAL_BIN/gt-telegram"
-    echo "    Installed: gt-telegram -> $LOCAL_BIN/gt-telegram"
-fi
-
-# 5c. Clean up stale service files from older installs
+# 5b. Clean up stale service files from older installs
 for stale in "$SERVICE_DIR/gt-bot.service"; do
     if [ -f "$stale" ]; then
         rm -f "$stale"
@@ -69,11 +58,24 @@ for stale in "$SERVICE_DIR/gt-bot.service"; do
     fi
 done
 
-# 6. Detect the real user (not root when run via sudo)
-SVC_USER="${SUDO_USER:-$(whoami)}"
+# 6. Detect the town owner (whoever owns TOWN_ROOT, not whoever runs this script)
+# Each user has their own town — the service must run as the town owner,
+# regardless of who invokes install.sh (e.g. another user via sudo).
+SVC_USER="$(stat -c '%U' "$TOWN_ROOT")"
 SVC_HOME=$(eval echo "~$SVC_USER")
+echo "==> Town owner: $SVC_USER (HOME=$SVC_HOME)"
 
-# Detect paths for gt and bd using the real user's environment
+# 6b. Install gt-telegram CLI helper (into the town owner's PATH)
+if [ -f "$SCRIPT_DIR/gt-telegram" ]; then
+    cp "$SCRIPT_DIR/gt-telegram" "$SERVICE_DIR/gt-telegram"
+    chmod +x "$SERVICE_DIR/gt-telegram"
+    LOCAL_BIN="$SVC_HOME/.local/bin"
+    mkdir -p "$LOCAL_BIN"
+    ln -sf "$SERVICE_DIR/gt-telegram" "$LOCAL_BIN/gt-telegram"
+    echo "    Installed: gt-telegram -> $LOCAL_BIN/gt-telegram"
+fi
+
+# Detect paths for gt and bd using the town owner's environment
 # (sudo changes PATH, so resolve from the real user's shell)
 GT_PATH="$(sudo -u "$SVC_USER" bash -lc 'dirname "$(command -v gt 2>/dev/null || echo /usr/local/bin/gt)"' 2>/dev/null)"
 BD_PATH="$(sudo -u "$SVC_USER" bash -lc 'dirname "$(command -v bd 2>/dev/null || echo /usr/local/bin/bd)"' 2>/dev/null)"
@@ -87,7 +89,7 @@ done
 SVC_PATH="${EXTRA_PATHS}:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
 
 # 7. Generate systemd service file (town-specific name to avoid conflicts)
-# - User/HOME: runs as the installing user, not root (root would corrupt sqlite WAL ownership)
+# - User/HOME: runs as the town owner, not root (root would corrupt sqlite WAL ownership)
 # - PATH: includes gt and bd directories (systemd doesn't inherit user shell PATH)
 cat > "$SERVICE_DIR/${SERVICE_NAME}.service" <<EOF
 [Unit]
