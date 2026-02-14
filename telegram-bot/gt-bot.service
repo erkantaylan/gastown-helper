@@ -1,0 +1,21 @@
+# DEPRECATED: This template is no longer used.
+# install.sh generates the service file dynamically with correct paths.
+# Kept only as a reference for the service file structure.
+
+[Unit]
+Description=Gas Town Telegram Bot (<town-name>)
+After=network.target
+
+[Service]
+Type=simple
+User=<detected-user>
+ExecStart=<town-root>/services/telegram-bot/gt-bot
+WorkingDirectory=<town-root>
+EnvironmentFile=<town-root>/services/telegram-bot/.env
+Environment=PATH=<gt-bin-dir>:<bd-bin-dir>:/usr/local/bin:/usr/bin
+Environment=HOME=<user-home>
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
