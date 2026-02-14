@@ -111,40 +111,20 @@ try:
     input_k = $input_tokens / 1000
     output_k = $output_tokens / 1000
 
-    parts = []
+    # Show ONLY 5h/7d percentages (the important metrics)
     if five_pct > 0 or seven_pct > 0:
-        parts.append(f'5h{five_pct}%')
-        parts.append(f'7d{seven_pct}%')
-
-    if $messages > 0:
-        parts.append(f'{$messages}msg')
-
-    if input_k > 0 or output_k > 0:
-        parts.append(f'{input_k:.0f}k↑{output_k:.0f}k↓')
-
-    if parts:
-        print('🤖 ' + ' '.join(parts))
+        print(f'{five_icon}5h:{five_pct}% {seven_icon}7d:{seven_pct}%')
     else:
-        print('🤖 ready')
+        # No API data yet - show simple indicator
+        print('🤖 ...')
 
 except Exception as e:
-    # Fallback to local stats only
-    if $messages > 0:
-        input_k = $input_tokens / 1000
-        output_k = $output_tokens / 1000
-        print(f'🤖 {$messages}msg {input_k:.0f}k↑{output_k:.0f}k↓')
-    else:
-        print('🤖 ready')
+    # No API data available
+    print('🤖 ...')
 " 2>/dev/null || echo "🤖 ..."
     else
-        # No web data, show local only
-        if [ "$messages" -gt 0 ]; then
-            local input_k=$(echo "scale=0; $input_tokens / 1000" | bc 2>/dev/null || echo 0)
-            local output_k=$(echo "scale=0; $output_tokens / 1000" | bc 2>/dev/null || echo 0)
-            echo "🤖 ${messages}msg ${input_k}k↑${output_k}k↓"
-        else
-            echo "🤖 ready"
-        fi
+        # No web data yet
+        echo "🤖 ..."
     fi
 }
 
