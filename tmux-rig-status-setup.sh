@@ -3,10 +3,20 @@
 #
 # Run once to enable, or add to your tmux.conf / shell profile.
 # To disable: tmux set-option -g status 1
+#
+# Requires GT_HOME environment variable (defaults to parent of gthelper)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-STATUS_SCRIPT="$SCRIPT_DIR/tmux-rig-status.sh"
-FILTER_SCRIPT="$SCRIPT_DIR/tmux-status-right.sh"
+
+# Auto-detect GT_HOME if not set
+if [ -z "$GT_HOME" ]; then
+    # gthelper is at $GT_HOME/gthelper, so parent is GT_HOME
+    GT_HOME="$(cd "$SCRIPT_DIR/.." && pwd)"
+    export GT_HOME
+fi
+
+STATUS_SCRIPT="$GT_HOME/gthelper/tmux-rig-status.sh"
+FILTER_SCRIPT="$GT_HOME/gthelper/tmux-status-right.sh"
 
 # Enable 2 status lines
 tmux set-option -g status 2
@@ -25,12 +35,11 @@ tmux set-option -g 'status-format[1]' \
 # Mayor name, username, and town directory
 MAYOR_NAME=$(cat ~/.gt-mayor-name 2>/dev/null || echo "Mayor")
 USERNAME=$(whoami)
-TOWN_DIR=$(basename "$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)")
+TOWN_DIR=$(basename "$GT_HOME")
 
 # Detect bot version and name from deployed binary + .env
-TOWN_ROOT="$(cd "$SCRIPT_DIR/../../.." 2>/dev/null && pwd)"
-BOT_BIN="$TOWN_ROOT/services/telegram-bot/gt-bot"
-BOT_ENV="$TOWN_ROOT/services/telegram-bot/.env"
+BOT_BIN="$GT_HOME/services/telegram-bot/gt-bot"
+BOT_ENV="$GT_HOME/services/telegram-bot/.env"
 BOT_VERSION=$("$BOT_BIN" --version 2>/dev/null || echo "")
 BOT_NAME=$(grep '^TELEGRAM_BOT_TOKEN=' "$BOT_ENV" 2>/dev/null | cut -d= -f2 | xargs -I{} curl -s "https://api.telegram.org/bot{}/getMe" 2>/dev/null | grep -o '"username":"[^"]*"' | cut -d'"' -f4)
 BOT_BADGE=""
