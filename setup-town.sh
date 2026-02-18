@@ -513,6 +513,88 @@ setup_git_config() {
     info "Git global config set: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
 }
 
+# ─── Tmux Configuration ───────────────────────────────────────────────────────
+
+setup_tmux() {
+    step "Configuring tmux (2-line status bar)"
+
+    local home
+    home="$(user_home)"
+    local tmux_dir="${home}/.config/tmux"
+    local gt_home="${home}/${TOWN_NAME}"
+
+    # Create tmux config directory
+    if $DRY_RUN; then
+        echo -e "${YELLOW}[dry-run]${NC} mkdir -p ${tmux_dir}"
+    else
+        run_as_user "mkdir -p ~/.config/tmux"
+    fi
+
+    # Download tmux.conf from gthelper repo
+    local tmux_conf_url="https://raw.githubusercontent.com/erkantaylan/gastown-helper/main/tmux.conf"
+    if $DRY_RUN; then
+        echo -e "${YELLOW}[dry-run]${NC} Download tmux.conf and substitute GT_HOME"
+    else
+        local tmp_conf
+        tmp_conf=$(mktemp)
+        if curl -sL "$tmux_conf_url" -o "$tmp_conf" 2>/dev/null; then
+            # Replace $GT_HOME references with actual path
+            sed -i "s|\$GT_HOME|${gt_home}|g" "$tmp_conf"
+            mv "$tmp_conf" "${tmux_dir}/tmux.conf"
+            chown "${GT_USER}:${GT_USER}" "${tmux_dir}/tmux.conf"
+            info "tmux.conf installed to ~/.config/tmux/tmux.conf"
+        else
+            warn "Could not download tmux.conf - skipping tmux setup"
+            rm -f "$tmp_conf"
+            return
+        fi
+    fi
+
+    # Download helper scripts
+    local scripts_dir="${gt_home}/gthelper"
+    if $DRY_RUN; then
+        echo -e "${YELLOW}[dry-run]${NC} Download tmux helper scripts to ${scripts_dir}"
+    else
+        run_as_user "mkdir -p ~/${TOWN_NAME}/gthelper"
+
+        local scripts=("tmux-rig-status.sh" "tmux-status-right.sh" "tmux-rig-status-setup.sh")
+        for script in "${scripts[@]}"; do
+            local script_url="https://raw.githubusercontent.com/erkantaylan/gastown-helper/main/${script}"
+            if curl -sL "$script_url" -o "${scripts_dir}/${script}" 2>/dev/null; then
+                chmod +x "${scripts_dir}/${script}"
+                chown "${GT_USER}:${GT_USER}" "${scripts_dir}/${script}"
+                info "Downloaded ${script}"
+            else
+                warn "Could not download ${script}"
+            fi
+        done
+    fi
+
+    # Add GT_HOME to .bashrc
+    local bashrc="${home}/.bashrc"
+    local gt_home_marker="# --- Gas Town GT_HOME ---"
+    if grep -qF "$gt_home_marker" "$bashrc" 2>/dev/null; then
+        warn "GT_HOME already set in .bashrc, skipping."
+    else
+        if $DRY_RUN; then
+            echo -e "${YELLOW}[dry-run]${NC} Append GT_HOME export to ${bashrc}"
+        else
+            cat >> "$bashrc" << BASHRC
+
+${gt_home_marker}
+export GT_HOME="\$HOME/${TOWN_NAME}"
+# --- End Gas Town GT_HOME ---
+BASHRC
+            chown "${GT_USER}:${GT_USER}" "$bashrc"
+        fi
+        info "GT_HOME exported in .bashrc"
+    fi
+
+    info "Tmux 2-line status bar configured"
+    echo "  Line 1: Mayor badge, user, town, mail status"
+    echo "  Line 2: Rig overview with status icons"
+}
+
 # ─── Initialize Town ──────────────────────────────────────────────────────────
 
 init_town() {
@@ -585,6 +667,7 @@ main() {
     install_github_cli
     migrate_ssh_keys
     init_town
+    setup_tmux
 
     echo ""
     echo -e "${GREEN}${BOLD}════════════════════════════════════════════${NC}"
