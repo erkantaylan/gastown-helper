@@ -66,6 +66,7 @@ check_deps() {
 MAYOR_NAME=""
 SHOW_USER_FOLDER="y"
 SETUP_TELEGRAM="n"
+TELEGRAM_BOT_NAME=""
 TELEGRAM_TOKEN=""
 TELEGRAM_CHAT_ID=""
 ENABLE_SECOND_BAR="y"
@@ -130,10 +131,11 @@ gather_inputs() {
     SETUP_TELEGRAM="${SETUP_TELEGRAM,,}"
 
     if [[ "$SETUP_TELEGRAM" == "y" ]]; then
+        prompt "  Bot username (e.g. my_gastown_bot): " TELEGRAM_BOT_NAME
         prompt "  Bot token from @BotFather: " TELEGRAM_TOKEN
         prompt "  Your Telegram chat ID: " TELEGRAM_CHAT_ID
-        if [[ -z "$TELEGRAM_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
-            warn "Token or chat ID empty — skipping Telegram setup."
+        if [[ -z "$TELEGRAM_BOT_NAME" || -z "$TELEGRAM_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+            warn "Bot name, token, or chat ID empty — skipping Telegram setup."
             SETUP_TELEGRAM="n"
         fi
     fi
@@ -170,6 +172,7 @@ save_config() {
 MAYOR_NAME=${MAYOR_NAME}
 SHOW_USER_FOLDER=${SHOW_USER_FOLDER}
 SETUP_TELEGRAM=${SETUP_TELEGRAM}
+TELEGRAM_BOT_NAME=${TELEGRAM_BOT_NAME}
 ENABLE_SECOND_BAR=${ENABLE_SECOND_BAR}
 INSTALL_DIR=${INSTALL_DIR}
 EOF
@@ -177,7 +180,7 @@ EOF
     echo "$MAYOR_NAME" > "$HOME/.gt-mayor-name"
 
     if [[ "$SETUP_TELEGRAM" == "y" ]]; then
-        echo "${MAYOR_NAME}" > "$HOME/.gt-bot-name"
+        echo "${TELEGRAM_BOT_NAME}" > "$HOME/.gt-bot-name"
         cat > "$PREFS_DIR/telegram.env" << EOF
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN}
 TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
@@ -342,16 +345,30 @@ generate_tmux_conf() {
     fi
 
     # Build status-left segments
+    # Detect town name for folder display
+    local town_name=""
+    if [[ -n "$GT_HOME" ]]; then
+        town_name="$(basename "$GT_HOME")"
+    else
+        for dir in "$HOME"/*/mayor; do
+            if [[ -d "$dir" ]]; then
+                town_name="$(basename "$(dirname "$dir")")"
+                break
+            fi
+        done
+    fi
+    town_name="${town_name:-gt}"
+
     local left_segments=""
     if [[ "$SHOW_USER_FOLDER" == "y" ]]; then
-        left_segments+='#[fg=colour220,bg=colour24]#[fg=colour255,bg=colour24,bold] #(whoami) #(basename #{pane_current_path}) '
+        left_segments+="#[fg=colour220,bg=colour24]#[fg=colour255,bg=colour24,bold] 👤#(whoami) 📁${town_name} "
         if [[ "$SETUP_TELEGRAM" == "y" ]]; then
-            left_segments+='#[fg=colour24,bg=colour238]#[fg=colour250,bg=colour238] @#(cat ~/.gt-bot-name 2>/dev/null) #[fg=colour238,bg=colour232]'
+            left_segments+='#[fg=colour24,bg=colour238]#[fg=colour250,bg=colour238] 📱@#(cat ~/.gt-bot-name 2>/dev/null) #[fg=colour238,bg=colour232]'
         else
             left_segments+='#[fg=colour24,bg=colour232]'
         fi
     elif [[ "$SETUP_TELEGRAM" == "y" ]]; then
-        left_segments+='#[fg=colour220,bg=colour238]#[fg=colour250,bg=colour238] @#(cat ~/.gt-bot-name 2>/dev/null) #[fg=colour238,bg=colour232]'
+        left_segments+='#[fg=colour220,bg=colour238]#[fg=colour250,bg=colour238] 📱@#(cat ~/.gt-bot-name 2>/dev/null) #[fg=colour238,bg=colour232]'
     fi
 
     local status_count="2"
@@ -383,7 +400,7 @@ set -g status-right-length 200
 
 # Line 1 left: mayor badge + segments
 set -g status-left "\\
-#[fg=colour232,bg=colour220,bold] #(cat ~/.gt-mayor-name 2>/dev/null || echo Mayor) \\
+#[fg=colour232,bg=colour220,bold] 🎩 #(cat ~/.gt-mayor-name 2>/dev/null || echo Mayor) \\
 ${left_segments} "
 
 # Line 1 right: anti-override + gt status (filtered) + time
