@@ -3,6 +3,7 @@
 #
 # Install:  curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/install-tmux.sh | bash
 # Update:   Same command. Detects existing config and offers to keep settings.
+# Auto:     curl ... | bash -s -- --yes   (use existing config / defaults, no prompts)
 #
 # Everything is embedded — no other files need to be downloaded.
 # Runtime scripts are written to ~/.local/share/gt-tmux/
@@ -14,6 +15,7 @@ INSTALL_DIR="${GT_TMUX_DIR:-$HOME/.local/share/gt-tmux}"
 CONFIG_DIR="$HOME/.config/tmux"
 PREFS_DIR="$HOME/.config/gt-tmux"
 PREFS_FILE="$PREFS_DIR/config"
+AUTO_YES=false
 
 # ─── Colors ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -32,6 +34,10 @@ fi
 
 prompt() {
     local text="$1" var="$2"
+    if $AUTO_YES; then
+        # In auto mode, use whatever default is already set
+        return
+    fi
     echo -ne "$text" >&2
     IFS= read -r "$var" < "$TTY_IN"
 }
@@ -87,6 +93,12 @@ gather_inputs() {
         echo "  Telegram:     ${SETUP_TELEGRAM}"
         echo "  Second bar:   ${ENABLE_SECOND_BAR}"
         echo ""
+
+        if $AUTO_YES; then
+            info "Using existing settings (--yes)"
+            return
+        fi
+
         local reuse
         prompt "$(echo -e "Keep these settings? [Y/n]: ")" reuse
         if [[ "${reuse,,}" != "n" ]]; then
@@ -94,6 +106,10 @@ gather_inputs() {
             return
         fi
         echo ""
+    elif $AUTO_YES; then
+        info "No existing config — using defaults (--yes)"
+        MAYOR_NAME="${MAYOR_NAME:-Mayor}"
+        return
     fi
 
     # Step 1: Mayor name
@@ -428,6 +444,12 @@ apply_live() {
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
 main() {
+    for arg in "$@"; do
+        case "$arg" in
+            --yes|-y) AUTO_YES=true ;;
+        esac
+    done
+
     check_deps
     gather_inputs
 
