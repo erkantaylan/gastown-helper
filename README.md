@@ -13,8 +13,6 @@ Setup scripts, tools, and docs for [Gas Town](https://github.com/steveyegge/gast
 | `tmux-rig-status.sh` | Second tmux status line showing rig overview |
 | `tmux-status-right.sh` | First line filter — strips rig LEDs (shown on second line) |
 | `tmux-rig-status-setup.sh` | One-time setup for the second status line |
-| **`claude-usage.sh.template`** | **Claude usage tracker (inspired by [claude-counter](https://github.com/she-llac/claude-counter))** |
-| **`install-claude-usage.sh`** | **Installer for Claude usage tracking** |
 | `docs/` | Guides and reference docs |
 
 ## Tmux Status Bar (Standalone Install)
@@ -44,27 +42,6 @@ echo 'YourName' > ~/.gt-mayor-name
 ```
 
 See [docs/tmux-second-status-line.md](docs/tmux-second-status-line.md) for details.
-
-## Claude Usage Tracking
-
-**NEW:** Inspired by [claude-counter](https://github.com/she-llac/claude-counter) by [@she-llac](https://github.com/she-llac)
-
-Display Claude usage metrics in your Gas Town tmux status bar:
-
-```
-🟢abp 🔨listen          🤖 5h:45% 7d:12% | 6333msg 21k↑60k↓
-└─ rigs (left)          └─ claude usage (right)
-```
-
-### Quick Start
-
-```bash
-bash install-claude-usage.sh
-```
-
-### Documentation
-
-See [CLAUDE_USAGE_TRACKING.md](CLAUDE_USAGE_TRACKING.md) for complete documentation.
 
 ## Setup Script
 
@@ -117,7 +94,6 @@ See [telegram-bot/README.md](telegram-bot/README.md) for setup.
 | [tmux-statusbar.md](docs/tmux-statusbar.md) | Customize the Gas Town tmux status bar |
 | [tmux-second-status-line.md](docs/tmux-second-status-line.md) | Add a rig overview second status line |
 | **[CLAUDE.md](CLAUDE.md)** | **Agent-friendly quick reference for tmux setup** |
-| **[CLAUDE_USAGE_TRACKING.md](CLAUDE_USAGE_TRACKING.md)** | **Claude usage tracking (adapted from claude-counter)** |
 | [dev-sandbox-setup.md](docs/dev-sandbox-setup.md) | Run Gas Town from source in isolation |
 
 ## Requirements
@@ -126,6 +102,3 @@ See [telegram-bot/README.md](telegram-bot/README.md) for setup.
 - Root access for setup script
 - Go 1.21+ for building the Telegram bot
 
-## Credits
-
-Claude usage tracking inspired by and adapted from [claude-counter](https://github.com/she-llac/claude-counter) by [@she-llac](https://github.com/she-llac).
