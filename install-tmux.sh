@@ -438,6 +438,159 @@ TMUXCONF
     info "tmux.conf generated at $CONFIG_DIR/tmux.conf"
 }
 
+# ─── Telegram bot installation ─────────────────────────────────────────────────
+
+install_telegram_bot() {
+    if [[ "$SETUP_TELEGRAM" != "y" ]]; then
+        return
+    fi
+
+    # Need token and chat ID
+    if [[ -z "$TELEGRAM_TOKEN" && -f "$PREFS_DIR/telegram.env" ]]; then
+        source "$PREFS_DIR/telegram.env"
+        TELEGRAM_TOKEN="${TELEGRAM_BOT_TOKEN:-}"
+        TELEGRAM_CHAT_ID="${TELEGRAM_CHAT_ID:-}"
+    fi
+    if [[ -z "$TELEGRAM_TOKEN" || -z "$TELEGRAM_CHAT_ID" ]]; then
+        warn "No Telegram credentials — skipping bot installation"
+        return
+    fi
+
+    # Detect town root
+    local town_root=""
+    if [[ -n "$GT_HOME" ]]; then
+        town_root="$GT_HOME"
+    else
+        for dir in "$HOME"/*/mayor; do
+            if [[ -d "$dir" ]]; then
+                town_root="$(dirname "$dir")"
+                break
+            fi
+        done
+    fi
+    if [[ -z "$town_root" ]]; then
+        warn "Could not detect town directory — skipping bot installation"
+        return
+    fi
+
+    local town_name
+    town_name="$(basename "$town_root")"
+    local svc_dir="$town_root/services/telegram-bot"
+    local svc_name="gt-bot-${town_name}"
+    local bot_src="$town_root/gthelper/mayor/rig/telegram-bot"
+
+    # Check if bot source exists
+    if [[ ! -f "$bot_src/main.go" ]]; then
+        # Try to find it via the repo clone
+        for d in "$town_root"/gthelper/*/rig/telegram-bot; do
+            if [[ -f "$d/main.go" ]]; then
+                bot_src="$d"
+                break
+            fi
+        done
+    fi
+    if [[ ! -f "$bot_src/main.go" ]]; then
+        warn "Bot source not found at $bot_src — skipping bot installation"
+        return
+    fi
+
+    # Check for go
+    if ! command -v go &>/dev/null; then
+        warn "Go not installed — skipping bot build"
+        return
+    fi
+
+    # Check if already running with same version
+    if systemctl is-active --quiet "$svc_name" 2>/dev/null; then
+        if [[ -f "$svc_dir/gt-bot" ]]; then
+            local running_ver
+            running_ver=$("$svc_dir/gt-bot" --version 2>/dev/null || echo "")
+            info "Bot $svc_name already running ($running_ver) — rebuilding"
+            sudo systemctl stop "$svc_name" 2>/dev/null || true
+        fi
+    fi
+
+    # Build
+    info "Building telegram bot..."
+    (cd "$bot_src" && go build -o gt-bot . 2>&1) || { warn "Bot build failed"; return; }
+
+    # Install binary
+    mkdir -p "$svc_dir"
+    cp "$bot_src/gt-bot" "$svc_dir/gt-bot"
+    chmod +x "$svc_dir/gt-bot"
+
+    # Install gt-telegram helper
+    if [[ -f "$bot_src/gt-telegram" ]]; then
+        cp "$bot_src/gt-telegram" "$svc_dir/gt-telegram"
+        chmod +x "$svc_dir/gt-telegram"
+        mkdir -p "$HOME/.local/bin"
+        ln -sf "$svc_dir/gt-telegram" "$HOME/.local/bin/gt-telegram"
+    fi
+
+    # Detect binary paths
+    local gt_path bd_path
+    gt_path="$(command -v gt 2>/dev/null || echo gt)"
+    bd_path="$(command -v bd 2>/dev/null || echo bd)"
+
+    # Write .env (only if it doesn't exist or credentials changed)
+    if [[ ! -f "$svc_dir/.env" ]] || ! grep -q "$TELEGRAM_TOKEN" "$svc_dir/.env" 2>/dev/null; then
+        cat > "$svc_dir/.env" << ENVEOF
+TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN}
+TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+GT_TOWN_ROOT=${town_root}
+GT_BIN=${gt_path}
+BD_BIN=${bd_path}
+GT_ROLE=mayor
+BD_ACTOR=mayor
+POLL_INTERVAL=10
+STATE_FILE=${svc_dir}/state.json
+ENVEOF
+        chmod 600 "$svc_dir/.env"
+        info "Bot .env written to $svc_dir/.env"
+    else
+        info "Bot .env already exists — keeping"
+    fi
+
+    # Generate and install systemd service
+    local svc_path_env
+    svc_path_env="$(dirname "$gt_path"):$(dirname "$bd_path"):/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin"
+
+    cat > "$svc_dir/${svc_name}.service" << SVCEOF
+[Unit]
+Description=Gas Town Telegram Bot ($town_name)
+After=network.target
+
+[Service]
+Type=simple
+User=$(whoami)
+ExecStart=${svc_dir}/gt-bot
+WorkingDirectory=${town_root}
+EnvironmentFile=${svc_dir}/.env
+Environment=PATH=${svc_path_env}
+Environment=HOME=${HOME}
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+SVCEOF
+
+    info "Installing systemd service (needs sudo)..."
+    sudo cp "$svc_dir/${svc_name}.service" "/etc/systemd/system/${svc_name}.service"
+    sudo systemctl daemon-reload
+    sudo systemctl enable --now "$svc_name" 2>/dev/null
+
+    # Verify
+    sleep 2
+    if systemctl is-active --quiet "$svc_name" 2>/dev/null; then
+        local ver
+        ver=$("$svc_dir/gt-bot" --version 2>/dev/null || echo "?")
+        info "Bot $ver running as $svc_name (@${TELEGRAM_BOT_NAME:-bot})"
+    else
+        warn "Bot service failed to start — check: journalctl -u $svc_name"
+    fi
+}
+
 # ─── Apply live (second bar setup + override clearing + reload) ───────────────
 
 apply_live() {
@@ -479,6 +632,11 @@ main() {
     save_config
     install_scripts
     generate_tmux_conf
+
+    if [[ "$SETUP_TELEGRAM" == "y" ]]; then
+        step "Telegram Bot"
+        install_telegram_bot
+    fi
 
     step "Applying"
     apply_live
