@@ -180,12 +180,17 @@ EOF
     echo "$MAYOR_NAME" > "$HOME/.gt-mayor-name"
 
     if [[ "$SETUP_TELEGRAM" == "y" ]]; then
-        echo "${TELEGRAM_BOT_NAME}" > "$HOME/.gt-bot-name"
-        cat > "$PREFS_DIR/telegram.env" << EOF
+        if [[ -n "$TELEGRAM_BOT_NAME" ]]; then
+            echo "${TELEGRAM_BOT_NAME}" > "$HOME/.gt-bot-name"
+        fi
+        # Only write telegram.env if we have fresh values (don't wipe on update)
+        if [[ -n "$TELEGRAM_TOKEN" && -n "$TELEGRAM_CHAT_ID" ]]; then
+            cat > "$PREFS_DIR/telegram.env" << EOF
 TELEGRAM_BOT_TOKEN=${TELEGRAM_TOKEN}
 TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
 EOF
-        chmod 600 "$PREFS_DIR/telegram.env"
+            chmod 600 "$PREFS_DIR/telegram.env"
+        fi
     fi
 
     info "Config saved"
