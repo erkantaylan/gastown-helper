@@ -1,50 +1,41 @@
-# Gas Town Tmux Status Bar Setup
+# Gas Town Tmux Status Bar
 
 ## Overview
 
 The Gas Town tmux status bar has two lines:
-- **Line 1**: Mayor name (left) + agent counts, mail, hooked work (right) + clock
+- **Line 1**: Mayor name (left) + optional user/folder/telegram + agent counts, mail, hooked work (right) + clock
 - **Line 2**: Rig names with status icons
 
-## Quick Setup
+## Install / Update
 
 ```bash
-# 1. Set your mayor name
-echo "YourName" > ~/.gt-mayor-name
-
-# 2. Run the setup script
-bash ~/Desktop/projects/gt-01/gthelper/refinery/rig/tmux-rig-status-setup.sh
-
-# 3. (Optional) Add to tmux.conf for persistence
-echo 'run-shell "bash ~/Desktop/projects/gt-01/gthelper/refinery/rig/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
+curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/install-tmux.sh | bash
 ```
 
-## What It Does
-
-The setup script configures six things:
-
-1. **Enables 2 status lines** (`status 2`)
-2. **Status-left**: `🎩 MayorName` (bold, yellow background) + `username[town-dir]` (bold white on blue) + `📱v1` bot version badge (dark grey)
-3. **Status-right**: Filtered `gt status-line` (agent counts, mail, hooked work — no rig LEDs) + clock
-4. **Second line**: Rig names with status icons via `tmux-rig-status.sh`
-5. **Hides window list** (redundant with single window)
-6. **Fixes fill color** for both lines (prevents brown background on some terminals)
+The installer asks 4 questions and generates everything. Re-run the same command to update.
 
 ## What You See
 
 ### Line 1 (left side)
+
+Full config (user/folder + telegram enabled):
 ```
-🎩 Kael  kamyon[gt-01] 📱v1
+🎩 Kael  kamyon gt-01  @gastown_mine_bot
 ```
-- Gold background on mayor name — bold, always visible
-- Blue background on username[town] — bold white, most prominent element
-- Dark grey background on bot version badge
+- Gold background on mayor name
+- Blue background on username + folder
+- Dark grey background on bot name
+
+Minimal config (both disabled):
+```
+🎩 Kael
+```
 
 ### Line 1 (right side)
 ```
 1/1 🦉 2/2 🏭 | 📬 📱 Telegram | 10:30
 ```
-- Agent counts (witness 🦉, refinery 🏭)
+- Agent counts (witness, refinery)
 - Mail notifications
 - Hooked work indicators
 - Clock
@@ -65,37 +56,30 @@ The setup script configures six things:
 | 🅿️ | Parked |
 | ⚫ | Stopped |
 
-## Files
+## Configuration Files
 
 | File | Purpose |
 |------|---------|
-| `tmux-rig-status-setup.sh` | One-time setup script (or run from tmux.conf) |
-| `tmux-status-right.sh` | Filters gt status-line for first line (strips rig LEDs) |
-| `tmux-rig-status.sh` | Generates second line (rig status icons) |
-| `~/.gt-mayor-name` | Mayor name config (one line, e.g. `Kael`) |
+| `~/.config/gt-tmux/config` | Installer preferences (re-used on update) |
+| `~/.gt-mayor-name` | Mayor display name |
+| `~/.gt-bot-name` | Telegram bot username |
+| `~/.config/tmux/tmux.conf` | Generated tmux config |
+
+## How the Anti-Override Works
+
+Gas Town's daemon sets session-level `status-left`/`status-right` on `hq-mayor` every time it creates or restarts a session. These session-level options shadow the global tmux.conf.
+
+The `tmux-anti-override.sh` script is called via `#()` in `status-right`, so it runs every `status-interval` (5s). It checks for session-level overrides on `hq-mayor` and clears them, letting the global config win. This is invisible (returns empty string).
 
 ## For Other Towns
 
-To set up the same status bar on another town:
+Just run the installer on the new machine:
 
 ```bash
-# 1. Pick a mayor name
-echo "TheirName" > ~/.gt-mayor-name
-
-# 2. Copy the gthelper scripts to your rig (or use git)
-# Needed: tmux-rig-status-setup.sh, tmux-status-right.sh, tmux-rig-status.sh
-
-# 3. Run setup
-bash /path/to/tmux-rig-status-setup.sh
-
-# 4. Make persistent
-echo 'run-shell "bash /path/to/tmux-rig-status-setup.sh"' >> ~/.config/tmux/tmux.conf
+curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/install-tmux.sh | bash
 ```
 
-The script auto-detects:
-- Mayor name from `~/.gt-mayor-name`
-- Username from `whoami`
-- Town directory name from the script's location
+It auto-detects the town directory and configures paths accordingly.
 
 ## Disable
 
@@ -106,10 +90,10 @@ tmux set-option -g status 1
 # Restore window list
 tmux set-option -gu window-status-current-format
 tmux set-option -gu window-status-format
-
-# Restore default status-left
-tmux set-option -t hq-mayor status-left "🎩 Mayor "
-
-# Remove from tmux.conf
-# Delete the run-shell line for tmux-rig-status-setup.sh
 ```
+
+## Requirements
+
+- tmux 3.4+
+- python3
+- `gt` binary in PATH

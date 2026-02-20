@@ -5,7 +5,7 @@ Instructions for setting up the tmux status bar and telegram bot on a new Gas To
 ## 1. Tmux Status Bar
 
 Two-line status bar configured directly in `~/.config/tmux/tmux.conf` (no oh-my-tmux or other frameworks needed):
-- **Line 1 left**: mayor name + user + town + bot badge
+- **Line 1 left**: mayor name + optional user/folder + optional telegram bot name
 - **Line 1 right**: agent counts, mail, hooked work (no rig LEDs) + time
 - **Line 2**: rig names with status icons
 
@@ -18,35 +18,22 @@ Two-line status bar configured directly in `~/.config/tmux/tmux.conf` (no oh-my-
 ### Setup
 
 ```bash
-# 1. Pick your mayor name
-echo "YourName" > ~/.gt-mayor-name
-
-# 2. Cache your bot's Telegram username (one-time, after bot is deployed)
-echo "your_bot_username" > ~/.gt-bot-name
-
-# 3. Install the tmux config
-cp <your-town>/gthelper/refinery/rig/tmux.conf ~/.config/tmux/tmux.conf
-
-# 4. Edit the config to update paths for your town directory
-#    - Replace gt-01 with your town dir name
-#    - Replace hardcoded paths to match your town location
-vim ~/.config/tmux/tmux.conf
-
-# 5. Reload
-tmux source-file ~/.config/tmux/tmux.conf
+curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/install-tmux.sh | bash
 ```
+
+The installer asks 4 questions (mayor name, user/folder display, Telegram, second bar) and generates everything. Re-run the same command to update — it detects existing config and offers to keep settings.
 
 ### Layout
 
 ```
-🎩 Kael  👶kamyon 📁gt-01  📱v1 @gastown_mine_bot     📬 2 | 12:20 13 Feb
+🎩 Kael  kamyon gt-01  @gastown_mine_bot     📬 2 | 12:20 13 Feb
 ⚫abp 🟢scs ⚫gthelper
 ```
 
-Line 1 left segments (with powerline arrows):
-- **Yellow bg**: 🎩 mayor name (from `~/.gt-mayor-name`)
-- **Blue bg**: 👶user 📁town
-- **Dark grey bg**: 📱bot version + @bot username (from `~/.gt-bot-name`)
+Line 1 left segments:
+- **Yellow bg**: mayor name (from `~/.gt-mayor-name`)
+- **Blue bg**: username + folder (optional, set during install)
+- **Dark grey bg**: @bot username (optional, set during install)
 
 Line 1 right:
 - Filtered gt status (no rig LEDs) + time/date
@@ -65,11 +52,11 @@ Line 2:
 
 ### Files Involved
 
-- `~/.config/tmux/tmux.conf` — the actual tmux config (persistent, survives reloads)
+- `~/.config/tmux/tmux.conf` — generated tmux config
+- `~/.config/gt-tmux/config` — saved installer preferences
 - `~/.gt-mayor-name` — mayor display name
 - `~/.gt-bot-name` — cached Telegram bot username
-- `gthelper/refinery/rig/tmux-status-right.sh` — filters `gt status-line` for line 1 (strips rig LEDs)
-- `gthelper/refinery/rig/tmux-rig-status.sh` — generates line 2 (rig names with icons)
+- `~/.local/share/gt-tmux/*.sh` — runtime scripts (embedded by installer)
 
 ---
 

@@ -1,16 +1,16 @@
 # Tmux Second Status Line — Rig Overview
 
-Add a second status line to the bottom of your tmux showing all Gas Town rigs with live status indicators. Rig LEDs are removed from the first line to avoid duplication.
+A second status line at the bottom of tmux showing all Gas Town rigs with live status indicators. Rig LEDs are removed from the first line to avoid duplication.
 
 ## What It Looks Like
 
 ```
 ─── 🎩 Mayor    2/2 🦉 2/2 🏭 | 14:30 ──────────────────
-─── Rigs: 🔨 listen(2p)  🟢 livemd  ⚫ gthelper ─────────
+─── 🔨listen  🟢livemd  ⚫gthelper ────────────────────────
 ```
 
 Line 1: Agent counts, hooked work, mail, clock (no rig LEDs)
-Line 2: All rigs with status icons and worker counts
+Line 2: All rigs with status icons
 
 ## Icons
 
@@ -21,46 +21,25 @@ Line 2: All rigs with status icons and worker counts
 | 🟡 | Partial — only one agent running |
 | ⚫ | Stopped |
 
-Polecat and crew counts shown in parentheses when present: `listen(2p|1c)`
-
 ## Setup
 
-### One-liner
+The second bar is configured by the installer:
 
 ```bash
-./tmux-rig-status-setup.sh
+curl -fsSL https://raw.githubusercontent.com/erkantaylan/gastown-helper/master/install-tmux.sh | bash
 ```
 
-This does five things:
-1. Enables 2 status lines (`tmux set-option -g status 2`)
-2. Sets the second line with rig overview
-3. Removes rig LEDs from the first line
-4. Fixes background fill color (prevents brown gaps on some terminals)
-5. Hides the window list (e.g. `0:claude*`) — redundant with a single window
+When prompted "Enable second bar with rig overview?", answer Y (the default).
 
-### Persistent (add to ~/.bashrc)
-
-```bash
-# Gas Town second status line
-[ -n "$TMUX" ] && ~/path/to/tmux-rig-status-setup.sh 2>/dev/null
-```
-
-## Files
-
-| File | Purpose |
-|------|---------|
-| `tmux-rig-status.sh` | Second line script — formats rig data from `gt status --json` |
-| `tmux-status-right.sh` | First line filter — strips rig LEDs from `gt status-line` |
-| `tmux-rig-status-setup.sh` | One-time setup — enables everything |
+To toggle later, re-run the installer and change the setting.
 
 ## How It Works
 
-- `tmux-rig-status.sh` calls `gt status --json` and formats rig names with status icons
-- `tmux-status-right.sh` wraps `gt status-line`, filtering out rig LED entries
+- `tmux-rig-status.sh` (installed to `~/.local/share/gt-tmux/`) calls `gt status --json` and formats rig names with status icons
+- `tmux-status-right.sh` wraps `gt status-line`, filtering out rig LED entries so they only appear on line 2
 - Tmux runs both scripts every `status-interval` seconds (default 5s)
 - `fill=colour232` ensures the background covers the entire line width
-- Window list (e.g. `0:claude*`) is hidden since it's redundant with a single window
-- No modification to the `gt` binary needed
+- Window list is hidden since it's redundant with a single window
 
 ## Disable
 
@@ -68,12 +47,7 @@ This does five things:
 # Remove second line
 tmux set-option -g status 1
 
-# Restore rig LEDs on first line (if needed)
-tmux set-option -t hq-mayor status-right '#(gt status-line --session=hq-mayor 2>/dev/null) %H:%M'
-
-# Restore window list (if needed)
-tmux set-option -gu window-status-current-format
-tmux set-option -gu window-status-format
+# Or re-run the installer and answer 'n' to second bar
 ```
 
 ## Terminal Compatibility
