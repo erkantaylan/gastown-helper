@@ -205,12 +205,17 @@ install_scripts() {
     cat > "$INSTALL_DIR/tmux-anti-override.sh" << 'SCRIPT'
 #!/bin/bash
 # Clears Gas Town session-level overrides on hq-mayor.
-# Called via tmux #() every status-interval (5s). Returns empty string.
+# Called via tmux #() in status-format[1] every status-interval (5s).
+# Lives in line 2 because Gas Town overrides session-level status-right
+# (which shadows line 1's #() calls) but does NOT touch status-format[1].
+# Returns empty string (invisible side-effect only).
 if tmux show-options -t hq-mayor status-left 2>/dev/null | grep -q "status-left"; then
     tmux set-option -t hq-mayor -u status-left 2>/dev/null
     tmux set-option -t hq-mayor -u status-right 2>/dev/null
     tmux set-option -t hq-mayor -u status-left-length 2>/dev/null
     tmux set-option -t hq-mayor -u status-right-length 2>/dev/null
+    tmux set-option -t hq-mayor -u status-style 2>/dev/null
+    tmux set-option -t hq-mayor -u status-interval 2>/dev/null
 fi
 SCRIPT
 
@@ -408,14 +413,15 @@ set -g status-left "\\
 #[fg=colour232,bg=colour220,bold] 🎩 #(cat ~/.gt-mayor-name 2>/dev/null || echo Mayor) \\
 ${left_segments} "
 
-# Line 1 right: anti-override + gt status (filtered) + time
+# Line 1 right: gt status (filtered) + time
 set -g status-right "\\
-#(${D}/tmux-anti-override.sh)\\
 #(${D}/tmux-status-right.sh hq-mayor) \\
 #[fg=colour245]%H:%M %d %b "
 
-# Line 2: rig overview (only visible when status 2)
+# Line 2: rig overview + anti-override (runs here because Gas Town
+# overrides session-level status-right but NOT status-format[1])
 set -g status-format[1] "\\
+#(${D}/tmux-anti-override.sh)\\
 #[fill=colour232,align=left,bg=colour232,fg=colour245]\\
 #(${D}/tmux-rig-status.sh)"
 
