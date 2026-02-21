@@ -5,7 +5,7 @@
 # Update:   Same command. Detects existing config and offers to keep settings.
 # Auto:     curl ... | bash -s -- --yes   (use existing config / defaults, no prompts)
 #
-# Everything is embedded — no other files need to be downloaded.
+# tmux scripts are embedded. Telegram bot source is cloned on demand if needed.
 # Runtime scripts are written to ~/.local/share/gt-tmux/
 # Config goes to ~/.config/tmux/tmux.conf
 
@@ -483,21 +483,40 @@ install_telegram_bot() {
     town_name="$(basename "$town_root")"
     local svc_dir="$town_root/services/telegram-bot"
     local svc_name="gt-bot-${town_name}"
-    local bot_src="$town_root/gthelper/mayor/rig/telegram-bot"
+    local bot_src=""
+    local cloned_tmp=""
 
-    # Check if bot source exists
-    if [[ ! -f "$bot_src/main.go" ]]; then
-        # Try to find it via the repo clone
-        for d in "$town_root"/gthelper/*/rig/telegram-bot; do
-            if [[ -f "$d/main.go" ]]; then
-                bot_src="$d"
-                break
-            fi
-        done
-    fi
-    if [[ ! -f "$bot_src/main.go" ]]; then
-        warn "Bot source not found at $bot_src — skipping bot installation"
-        return
+    # Look for bot source locally first (rig may already be set up)
+    for candidate in \
+        "$town_root/gthelper/mayor/rig/telegram-bot" \
+        "$town_root"/gthelper/*/rig/telegram-bot; do
+        if [[ -f "$candidate/main.go" ]]; then
+            bot_src="$candidate"
+            break
+        fi
+    done
+
+    # Not found locally — clone the repo to a temp dir
+    if [[ -z "$bot_src" ]]; then
+        if ! command -v git &>/dev/null; then
+            warn "git not installed — cannot fetch bot source"
+            return
+        fi
+        local repo_url="git@github.com:erkantaylan/gastown-helper.git"
+        cloned_tmp="$(mktemp -d)"
+        info "Bot source not found locally — cloning from $repo_url..."
+        if ! git clone --depth 1 "$repo_url" "$cloned_tmp/gastown-helper" 2>&1; then
+            warn "Failed to clone $repo_url — skipping bot installation"
+            rm -rf "$cloned_tmp"
+            return
+        fi
+        if [[ -f "$cloned_tmp/gastown-helper/telegram-bot/main.go" ]]; then
+            bot_src="$cloned_tmp/gastown-helper/telegram-bot"
+        else
+            warn "Cloned repo does not contain telegram-bot/main.go — skipping"
+            rm -rf "$cloned_tmp"
+            return
+        fi
     fi
 
     # Check for go
@@ -594,6 +613,11 @@ SVCEOF
         info "Bot $ver running as $svc_name (@${TELEGRAM_BOT_NAME:-bot})"
     else
         warn "Bot service failed to start — check: journalctl -u $svc_name"
+    fi
+
+    # Clean up temp clone if we made one
+    if [[ -n "$cloned_tmp" && -d "$cloned_tmp" ]]; then
+        rm -rf "$cloned_tmp"
     fi
 }
 
