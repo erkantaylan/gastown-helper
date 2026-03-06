@@ -274,9 +274,8 @@ if not rigs:
     print(' No rigs')
     sys.exit(0)
 
-rigs.sort(key=lambda r: r['name'])
-
-parts = []
+# Classify each rig by status
+groups = {'working': [], 'active': [], 'partial': [], 'dormant': []}
 for rig in rigs:
     name = rig['name']
     polecats = rig.get('polecat_count', 0)
@@ -292,16 +291,24 @@ for rig in rigs:
 
     if polecats > 0:
         icon = '🔨'
+        groups['working'].append(f'{icon}{name}')
     elif witness_up and refinery_up:
         icon = '🟢'
+        groups['active'].append(f'{icon}{name}')
     elif witness_up or refinery_up:
         icon = '🟡'
+        groups['partial'].append(f'{icon}{name}')
     else:
         icon = '⚫'
+        groups['dormant'].append(f'{icon}{name}')
 
-    parts.append(f'{icon}{name}')
+# Sort within each group alphabetically
+for g in groups.values():
+    g.sort()
 
-print(' '.join(parts))
+# Join groups with separator, skip empty groups
+sections = [' '.join(g) for g in [groups['working'], groups['active'], groups['partial'], groups['dormant']] if g]
+print(' | '.join(sections))
 " <<< "$json"
 SCRIPT
 
